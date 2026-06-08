@@ -33,5 +33,15 @@ keyword-remove-efficiency:
 keyword-set-threshold:
 	python -m app.cli keyword set-threshold --key ${KEY} --value ${VALUE}
 
-.PHONY: run categorize init-db sanitize-db seed-config keyword-list keyword-add-cue keyword-add-group keyword-add-efficiency keyword-remove-efficiency keyword-set-threshold
+podman-build:
+	podman build -t entropy-app -f Containerfile .
+
+podman-run:
+	podman run -d -p 8501:8501 --name entropy-dashboard -v $(shell pwd)/entropy.db:/app/entropy.db:U entropy-app
+
+podman-stop:
+	podman stop entropy-dashboard || true
+	podman rm entropy-dashboard || true
+
+.PHONY: run categorize init-db sanitize-db seed-config keyword-list keyword-add-cue keyword-add-group keyword-add-efficiency keyword-remove-efficiency keyword-set-threshold podman-build podman-run podman-stop
 
