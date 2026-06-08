@@ -1,0 +1,772 @@
+import sys
+from pathlib import Path
+
+# Ensure project root is on sys.path so `app.*` imports work under Streamlit
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import json
+
+from app.core.database import engine, init_db
+
+# ── Page configuration ─────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Entropi Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ── Premium CSS Theme ──────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Base styles */
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Main background */
+.stApp {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border-right: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+section[data-testid="stSidebar"] .stMarkdown p,
+section[data-testid="stSidebar"] .stMarkdown label {
+    color: #334155;
+}
+
+/* Metric cards */
+div[data-testid="stMetric"] {
+    background: linear-gradient(135deg, #ffffff, #f8fafc);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 16px;
+    padding: 20px 24px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(148, 163, 184, 0.06), inset 0 1px 0 rgba(255,255,255,0.6);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+div[data-testid="stMetric"] label {
+    color: #64748b !important;
+    font-weight: 500;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: #0f172a !important;
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+/* Headers */
+h1 {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em;
+}
+h2, .stMarkdown h2 {
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid rgba(56, 189, 248, 0.3);
+    padding-bottom: 8px;
+    margin-top: 2rem !important;
+}
+h3 {
+    color: #334155 !important;
+    font-weight: 600 !important;
+}
+
+/* Buttons */
+.stButton > button {
+    background: #ffffff;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.stButton > button:hover {
+    background: #f8fafc;
+    border-color: #38bdf8;
+    color: #0284c7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.12);
+}
+
+/* Dataframe */
+div[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Divider */
+hr {
+    border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+/* Caption */
+.stCaption, .stMarkdown small {
+    color: #64748b !important;
+}
+
+/* Plotly chart containers */
+div[data-testid="stPlotlyChart"] {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+/* Selectbox, multiselect */
+div[data-testid="stSelectbox"],
+div[data-testid="stMultiSelect"] {
+    color: #0f172a;
+}
+
+/* Tabs */
+button[data-baseweb="tab"] {
+    color: #64748b !important;
+    font-weight: 500;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #0284c7 !important;
+    border-bottom-color: #0284c7 !important;
+}
+
+/* Remove default padding top */
+.block-container {
+    padding-top: 2rem;
+}
+</style>
+
+""", unsafe_allow_html=True)
+
+# ── Color palette ──────────────────────────────────────────────────────────────
+COLORS = {
+    "primary": "#0284c7",       # Sky blue (darker for text contrast)
+    "secondary": "#4f46e5",     # Indigo
+    "accent": "#db2777",        # Pink
+    "success": "#16a34a",       # Emerald
+    "warning": "#d97706",       # Amber
+    "danger": "#dc2626",        # Red
+    "teal": "#0d9488",          # Teal
+    "bg_card": "#ffffff",
+    "bg_plot": "rgba(0,0,0,0)",
+    "grid": "rgba(148, 163, 184, 0.12)",
+    "text": "#1e293b",
+    "text_muted": "#64748b",
+}
+
+CATEGORY_COLORS = {
+    "Energy": "#d97706",
+    "Environment": "#16a34a",
+    "Infrastructure": "#0284c7",
+    "Industry": "#4f46e5",
+    "Academic": "#db2777",
+}
+
+PLOTLY_LAYOUT = dict(
+    paper_bgcolor=COLORS["bg_plot"],
+    plot_bgcolor=COLORS["bg_plot"],
+    font=dict(family="Inter, sans-serif", color=COLORS["text"], size=13),
+    dragmode=False,
+)
+
+_GRID_AXES = dict(
+    xaxis=dict(gridcolor=COLORS["grid"], zerolinecolor=COLORS["grid"]),
+    yaxis=dict(gridcolor=COLORS["grid"], zerolinecolor=COLORS["grid"]),
+)
+
+_LEGEND_DEFAULT = dict(
+    bgcolor="rgba(0,0,0,0)",
+    font=dict(color=COLORS["text_muted"], size=11),
+)
+
+PLOTLY_CONFIG = {"scrollZoom": False, "displayModeBar": False}
+
+
+# ── Data loading from SQLite ───────────────────────────────────────────────────
+@st.cache_data(ttl=300)
+def load_data(dataset_type: str) -> pd.DataFrame:
+    """Load categorization results from the SQLite database."""
+    init_db()
+    query = """
+        SELECT title AS "Title",
+               year AS "Year",
+               category AS "Category",
+               status AS "Status",
+               is_efficiency AS "Efficiency Focus",
+               confidence_score AS "Category Score",
+               gap AS "Category Gap",
+               efficiency_score AS "Max Efficiency Score",
+               alt_category AS "Alt Category",
+               alt_score AS "Alt Score",
+               reason AS "Reason"
+        FROM researches
+        WHERE dataset_type = :dataset_type
+        ORDER BY year, title
+    """
+    df = pd.read_sql(query, engine, params={"dataset_type": dataset_type})
+    df["Year"] = df["Year"].astype(str)
+    return df
+
+
+# ── Load entropy keyword reference ──────────────────────────────────────────────
+data_dir = Path(__file__).resolve().parent.parent.parent / "data"
+
+
+@st.cache_data
+def load_entropy_keywords():
+    with open(data_dir / "entropy-deceleration-field.json") as f:
+        return json.load(f)
+
+
+entropy_keywords = load_entropy_keywords()
+
+
+# ── Modal dialog for keywords ───────────────────────────────────────────────────
+@st.dialog("Entropy Deceleration Keywords", width="large")
+def _show_keywords(category: str):
+    st.subheader(category)
+    for kw in entropy_keywords[category]:
+        st.markdown(f"- {kw}")
+
+
+
+# ── Title ───────────────────────────────x───────────────────────────────────────
+st.markdown("""
+<div style="text-align: center; padding: 1rem 0 0.5rem 0;">
+    <h1 style="
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: Black;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0;
+    ">Entropy Deceleration</h1>
+    <p style="color: #64748b; font-size: 1rem; margin-top: 0.25rem;">
+        Research Classification & Efficiency Analysis Dashboard
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+# ── Sidebar ────────────────────────────────────────────────────────────────────
+st.sidebar.markdown("""
+<div style="text-align: center; padding: 1rem 0;">
+    <p style="
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #0f172a;
+        margin: 0.25rem 0 0 0;
+    ">Entropy Deceleration</p>
+    <p style="color: #64748b; font-size: 0.75rem; margin: 0;">v2.0 — SQLite Edition</p>
+</div>
+<hr style="border-color: rgba(148,163,184,0.15); margin: 0.5rem 0 1rem 0;">
+""", unsafe_allow_html=True)
+
+file_choice = st.sidebar.selectbox(
+    "📂 Dataset",
+    ["Research Projects", "Community Service"],
+)
+dataset_map = {
+    "Research Projects": "research",
+    "Community Service": "community_service",
+}
+
+df = load_data(dataset_map[file_choice])
+
+if df.empty:
+    st.warning("No data found in the database. Please run categorization first via the CLI.")
+    st.code("python -m app.cli categorize --file data/reserach-project.xlsx --dataset_type research")
+    st.stop()
+
+# Limit to the latest five years in the dataset
+years = sorted(df["Year"].unique())[-5:]
+df_year = df[df["Year"].isin(years)]
+
+# ── Infographic Summary ────────────────────────────────────────────────────────
+total = len(df_year)
+yes_count = int((df_year["Efficiency Focus"] == "Yes").sum())
+yes_pct = yes_count / total * 100 if total else 0
+cat_count = df_year["Category"].nunique()
+year_count = df_year["Year"].nunique()
+# clear_count = int((df_year["Status"] == "Clear").sum())
+# clear_pct = clear_count / total * 100 if total else 0
+
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Total Records", f"{total:,}")
+m2.metric("Entropy Deceleration Related", f"{yes_count:,}")
+m3.metric("% Entropy Deceleration", f"{yes_pct:.1f}%")
+# m4.metric("Clear Category", f"{clear_pct:.0f}%")
+m4.metric("Years Covered", year_count)
+
+st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 1: Efficiency Flag per Year
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("## Entropy Deceleration Related Research per Year")
+
+eff_year_data = (
+    df_year.groupby(["Year", "Efficiency Focus"]).size()
+    .reset_index(name="Count")
+)
+
+cols = st.columns(len(years))
+for i, year in enumerate(years):
+    yr_data = eff_year_data[eff_year_data["Year"] == year]
+    y_count = int(yr_data[yr_data["Efficiency Focus"] == "Yes"]["Count"].sum())
+    n_count = int(yr_data[yr_data["Efficiency Focus"] == "No"]["Count"].sum())
+    yr_total = y_count + n_count
+    pct = y_count / yr_total * 100 if yr_total else 0
+
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=["Entropy Deceleration", "Non-Entropy Deceleration"],
+                values=[y_count, n_count],
+                hole=0.6,
+                marker_colors=[COLORS["teal"], "#e2e8f0"],
+                textinfo="none",
+                hoverinfo="label+value+percent",
+                sort=False,
+            )
+        ]
+    )
+    fig.update_layout(
+        **PLOTLY_LAYOUT,
+        title=dict(
+            text=f"<b style='font-size:28px;color:{COLORS['text']}'>{year}</b><br>"
+                 f"<span style='font-size:18px;color:{COLORS['text_muted']}'>"
+                 f"{pct:.1f}% ({y_count}/{yr_total})</span>",
+            font=dict(size=20),
+        ),
+        height=360,
+        margin=dict(l=10, r=10, t=70, b=10),
+        showlegend=False,
+        annotations=[
+            dict(
+                text=f"<b>{pct:.0f}%</b>",
+                x=0.5, y=0.5,
+                font_size=28,
+                font_color=COLORS["teal"],
+                showarrow=False,
+            )
+        ],
+    )
+    fig.update_layout(**_GRID_AXES)
+    with cols[i]:
+        st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+
+# ── Year drill-down buttons ───────────────────────────────────────────────────
+btn_cols = st.columns(len(years))
+st.session_state.setdefault("drill_year", None)
+
+for i, year in enumerate(years):
+    with btn_cols[i]:
+        if st.button(f"{year}", key=f"btn_{year}", width="stretch"):
+            st.session_state["drill_year"] = year
+
+# Drill-down detail section
+if st.session_state["drill_year"]:
+    drill_year = st.session_state["drill_year"]
+
+    c1, c2 = st.columns([8, 1])
+    with c1:
+        st.markdown(f"### 📊 Detail for {drill_year}")
+    with c2:
+        if st.button("✕ Close", key="reset_drill", width="stretch"):
+            st.session_state["drill_year"] = None
+            st.rerun()
+
+    df_drill = df_year[df_year["Year"] == drill_year]
+
+    # Category breakdown for this year
+    cat_drill = (
+        df_drill.groupby("Category")["Efficiency Focus"]
+        .apply(lambda x: (x == "Yes").sum())
+        .reset_index(name="Entropy Deceleration Count")
+    )
+    cat_drill_total = df_drill.groupby("Category").size().reset_index(name="Total")
+    cat_drill = cat_drill.merge(cat_drill_total, on="Category")
+
+    fig_drill = go.Figure()
+    fig_drill.add_trace(go.Bar(
+        x=cat_drill["Category"],
+        y=cat_drill["Total"],
+        name="Total",
+        marker_color="rgba(148,163,184,0.2)",
+        text=cat_drill["Total"],
+        textposition="outside",
+        textfont=dict(color=COLORS["text_muted"], size=11),
+    ))
+    fig_drill.add_trace(go.Bar(
+        x=cat_drill["Category"],
+        y=cat_drill["Entropy Deceleration Count"],
+        name="Entropy Deceleration Related",
+        marker_color=COLORS["teal"],
+        text=cat_drill["Entropy Deceleration Count"],
+        textposition="outside",
+        textfont=dict(color=COLORS["teal"], size=11),
+    ))
+    fig_drill.update_layout(
+        **PLOTLY_LAYOUT,
+        **_GRID_AXES,
+        title=dict(
+            text=f"Category Breakdown — {drill_year}",
+            font=dict(size=16, color=COLORS["text"]),
+        ),
+        barmode="overlay",
+        height=400,
+        margin=dict(l=40, r=40, t=60, b=40),
+        legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+    )
+    st.plotly_chart(fig_drill, width="stretch", config=PLOTLY_CONFIG)
+
+    # Entropy Deceleration keyword reference — modal per category
+    st.caption("**Entropy Deceleration Keywords by Category**")
+    kw_btn_cols = st.columns(len(entropy_keywords))
+    for j, cat in enumerate(entropy_keywords.keys()):
+        with kw_btn_cols[j]:
+            if st.button(cat, key=f"kw_cat_{cat}_{drill_year}", width="stretch"):
+                _show_keywords(cat)
+
+    # Top efficiency Yes Researchs table
+    st.markdown(f"#### Entropy Deceleration Researches — {drill_year}")
+    yes_drill = df_drill[df_drill["Efficiency Focus"] == "Yes"].sort_values(
+        "Max Efficiency Score", ascending=False
+    )
+    st.dataframe(
+        yes_drill[["Title", "Category", "Max Efficiency Score", "Reason"]].head(15),
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "Title": st.column_config.TextColumn("Title", width="large"),
+            "Category": st.column_config.TextColumn("Category", width="small"),
+            "Max Efficiency Score": st.column_config.NumberColumn("Eff Score", format="%.4f"),
+            "Reason": st.column_config.TextColumn("Reason", width="medium"),
+        },
+    )
+    st.divider()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 2: Trend line — Entropy Deceleration Related count per year
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("## Entropy Deceleration Research Trend")
+
+eff_yes_only = eff_year_data[eff_year_data["Efficiency Focus"] == "Yes"].copy()
+eff_no_only = eff_year_data[eff_year_data["Efficiency Focus"] == "No"].copy()
+
+fig_trend = go.Figure()
+fig_trend.add_trace(go.Scatter(
+    x=eff_yes_only["Year"],
+    y=eff_yes_only["Count"],
+    mode="lines+markers+text",
+    name="Entropy Deceleration Related",
+    line=dict(color=COLORS["teal"], width=3),
+    marker=dict(size=10, color=COLORS["teal"], line=dict(width=2, color="#ffffff")),
+    text=eff_yes_only["Count"],
+    textposition="top center",
+    textfont=dict(color=COLORS["teal"], size=12, weight="bold"),
+    fill="tozeroy",
+    fillcolor="rgba(13,148,136,0.06)",
+))
+if not eff_no_only.empty:
+    fig_trend.add_trace(go.Scatter(
+        x=eff_no_only["Year"],
+        y=eff_no_only["Count"],
+        mode="lines+markers",
+        name="Non-Entropy Deceleration",
+        line=dict(color=COLORS["text_muted"], width=2, dash="dot"),
+        marker=dict(size=7, color=COLORS["text_muted"]),
+    ))
+
+max_y = max(eff_yes_only["Count"].max(), eff_no_only["Count"].max() if not eff_no_only.empty else 0)
+fig_trend.update_layout(
+    **PLOTLY_LAYOUT,
+    title=dict(
+        text="Trend of Entropy Deceleration Projects Over Time",
+        font=dict(size=16, color=COLORS["text"]),
+    ),
+    height=420,
+    margin=dict(l=40, r=40, t=60, b=40),
+    yaxis=dict(
+        range=[0, max_y * 1.3],
+        gridcolor=COLORS["grid"],
+        zerolinecolor=COLORS["grid"],
+    ),
+    xaxis=dict(
+        dtick=1,
+        tickformat="d",
+        gridcolor=COLORS["grid"],
+        zerolinecolor=COLORS["grid"],
+    ),
+    legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+)
+st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CONFIG)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 3: Efficiency per Category × Year
+# ══════════════════════════════════════════════════════════════════════════════
+# st.markdown("## Entropy Deceleration by Category & Year")
+#
+# fig3_col1, fig3_col2 = st.columns([3, 2])
+#
+# with fig3_col1:
+#     # Heatmap: % Yes per (Category × Year)
+#     cat_pivot = (
+#         df_year.groupby(["Year", "Category"])["Efficiency Focus"]
+#         .apply(lambda x: (x == "Yes").mean() * 100)
+#         .reset_index(name="Percent Yes")
+#     )
+#
+#     # Pivot for heatmap
+#     heatmap_data = cat_pivot.pivot(index="Category", columns="Year", values="Percent Yes").fillna(0)
+#
+#     fig_heat = go.Figure(data=go.Heatmap(
+#         z=heatmap_data.values,
+#         x=heatmap_data.columns.tolist(),
+#         y=heatmap_data.index.tolist(),
+#         colorscale=[
+#             [0.0, "#f8fafc"],
+#             [0.25, "rgba(13, 148, 136, 0.1)"],
+#             [0.5, "rgba(13, 148, 136, 0.3)"],
+#             [0.75, "rgba(13, 148, 136, 0.6)"],
+#             [1.0, "#0d9488"],
+#         ],
+#         text=[[f"{v:.1f}%" for v in row] for row in heatmap_data.values],
+#         texttemplate="%{text}",
+#         textfont=dict(size=12, color=COLORS["text"]),
+#         hovertemplate="Category: %{y}<br>Year: %{x}<br>% Entropy Deceleration: %{z:.1f}%<extra></extra>",
+#         colorbar=dict(
+#             title=dict(text="% Entropy Deceleration", font=dict(color=COLORS["text_muted"])),
+#             tickfont=dict(color=COLORS["text_muted"]),
+#         ),
+#     ))
+#     fig_heat.update_layout(
+#         **PLOTLY_LAYOUT,
+#         title=dict(
+#             text="% Entropy Deceleration Related by Category & Year",
+#             font=dict(size=14, color=COLORS["text"]),
+#         ),
+#         height=380,
+#         margin=dict(l=40, r=40, t=60, b=40),
+#     )
+#     st.plotly_chart(fig_heat, width="stretch", config=PLOTLY_CONFIG)
+#
+# with fig3_col2:
+#     # Per-category grouped bar chart
+#     cat_eff_year = (
+#         df_year.groupby(["Year", "Category", "Efficiency Focus"]).size()
+#         .reset_index(name="Count")
+#     )
+#     cat_eff_yes = cat_eff_year[cat_eff_year["Efficiency Focus"] == "Yes"]
+#
+#     year_colors = [COLORS["primary"], COLORS["secondary"], COLORS["accent"],
+#                    COLORS["success"], COLORS["warning"], COLORS["danger"]]
+#
+#     fig_cat_bar = go.Figure()
+#     for j, yr in enumerate(sorted(cat_eff_yes["Year"].unique())):
+#         yr_data = cat_eff_yes[cat_eff_yes["Year"] == yr]
+#         fig_cat_bar.add_trace(go.Bar(
+#             x=yr_data["Category"],
+#             y=yr_data["Count"],
+#             name=str(yr),
+#             marker_color=year_colors[j % len(year_colors)],
+#             text=yr_data["Count"],
+#             textposition="outside",
+#             textfont=dict(size=10),
+#         ))
+#
+#     fig_cat_bar.update_layout(
+#         **PLOTLY_LAYOUT,
+#         **_GRID_AXES,
+#         title=dict(
+#             text="Entropy Deceleration Count by Category per Year",
+#             font=dict(size=14, color=COLORS["text"]),
+#         ),
+#         barmode="group",
+#         height=380,
+#         margin=dict(l=40, r=40, t=60, b=40),
+#         legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+#     )
+#     st.plotly_chart(fig_cat_bar, width="stretch", config=PLOTLY_CONFIG)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 4: Category Distribution
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("## Category Distribution")
+
+dist_col1, dist_col2 = st.columns([2, 3])
+
+with dist_col1:
+    cat_counts = df_year["Category"].value_counts().reset_index()
+    cat_counts.columns = ["Category", "Count"]
+    cat_colors = [CATEGORY_COLORS.get(c, COLORS["text_muted"]) for c in cat_counts["Category"]]
+
+    fig_donut = go.Figure(data=[go.Pie(
+        labels=cat_counts["Category"],
+        values=cat_counts["Count"],
+        hole=0.55,
+        marker_colors=cat_colors,
+        textinfo="label+percent",
+        textfont=dict(size=12, color="#fff"),
+        hovertemplate="%{label}: %{value} (%{percent})<extra></extra>",
+        sort=False,
+    )])
+    fig_donut.update_layout(
+        **PLOTLY_LAYOUT,
+        title=dict(
+            text="Overall Category Split",
+            font=dict(size=14, color=COLORS["text"]),
+        ),
+        height=400,
+        margin=dict(l=40, r=40, t=60, b=40),
+        showlegend=False,
+        annotations=[
+            dict(
+                text=f"<b>{total:,}</b><br><span style='font-size:11px'>total</span>",
+                x=0.5, y=0.5,
+                font_size=22,
+                font_color=COLORS["text"],
+                showarrow=False,
+            )
+        ],
+    )
+    st.plotly_chart(fig_donut, width="stretch", config=PLOTLY_CONFIG)
+
+with dist_col2:
+    # Status breakdown per category
+    status_cat = (
+        df_year.groupby(["Category", "Status"]).size()
+        .reset_index(name="Count")
+    )
+    status_colors = {
+        "Clear": COLORS["success"],
+        "Ambiguous": COLORS["warning"],
+        "Uncategorized": COLORS["danger"],
+    }
+
+    fig_status = go.Figure()
+    for status in ["Clear", "Ambiguous", "Uncategorized"]:
+        s_data = status_cat[status_cat["Status"] == status]
+        fig_status.add_trace(go.Bar(
+            x=s_data["Category"],
+            y=s_data["Count"],
+            name=status,
+            marker_color=status_colors.get(status, COLORS["text_muted"]),
+            text=s_data["Count"],
+            textposition="outside",
+            textfont=dict(size=10),
+        ))
+
+    fig_status.update_layout(
+        **PLOTLY_LAYOUT,
+        **_GRID_AXES,
+        title=dict(
+            text="Classification Confidence by Category",
+            font=dict(size=14, color=COLORS["text"]),
+        ),
+        barmode="stack",
+        height=400,
+        margin=dict(l=40, r=40, t=60, b=40),
+        legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+    )
+    st.plotly_chart(fig_status, width="stretch", config=PLOTLY_CONFIG)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 5: Raw Data Table
+# ══════════════════════════════════════════════════════════════════════════════
+# st.markdown("## Raw Data Explorer")
+#
+# # Summary pivot table
+# summary_table = (
+#     df_year.groupby(["Year", "Category", "Efficiency Focus"]).size()
+#     .reset_index(name="Count")
+# )
+# summary_pivot = summary_table.pivot_table(
+#     index=["Year", "Category"],
+#     columns="Efficiency Focus",
+#     values="Count",
+#     fill_value=0,
+# ).reset_index()
+#
+# if "No" not in summary_pivot.columns:
+#     summary_pivot["No"] = 0
+# if "Yes" not in summary_pivot.columns:
+#     summary_pivot["Yes"] = 0
+#
+# summary_pivot["Total"] = summary_pivot["No"] + summary_pivot["Yes"]
+# summary_pivot["% Entropy Deceleration"] = (summary_pivot["Yes"] / summary_pivot["Total"] * 100).round(1)
+#
+# st.dataframe(
+#     summary_pivot.sort_values(["Year", "Category"]),
+#     width="stretch",
+#     hide_index=True,
+#     column_config={
+#         "Year": st.column_config.TextColumn("Year"),
+#         "Category": st.column_config.TextColumn("Category"),
+#         "No": st.column_config.NumberColumn("Non-Entropy Deceleration", format="%d"),
+#         "Yes": st.column_config.NumberColumn("Entropy Deceleration", format="%d"),
+#         "Total": st.column_config.NumberColumn("Total", format="%d"),
+#         "% Entropy Deceleration": st.column_config.NumberColumn("% Entropy Deceleration", format="%.1f%%"),
+#     },
+# )
+#
+# # Full data with search
+# with st.expander("📋 View Full Dataset", expanded=False):
+#     search_term = st.text_input("🔍 Search titles...", placeholder="Type to filter by title")
+#     display_df = df_year.copy()
+#     if search_term:
+#         display_df = display_df[display_df["Title"].str.contains(search_term, case=False, na=False)]
+#
+#     st.dataframe(
+#         display_df,
+#         width="stretch",
+#         hide_index=True,
+#         column_config={
+#             "Title": st.column_config.TextColumn("Title", width="large"),
+#             "Year": st.column_config.TextColumn("Year", width="small"),
+#             "Category": st.column_config.TextColumn("Category", width="small"),
+#             "Status": st.column_config.TextColumn("Status", width="small"),
+#             "Efficiency Focus": st.column_config.TextColumn("Entropy Deceleration", width="small"),
+#             "Category Score": st.column_config.NumberColumn("Score", format="%.4f"),
+#             "Category Gap": st.column_config.NumberColumn("Gap", format="%.4f"),
+#             "Max Efficiency Score": st.column_config.NumberColumn("Eff Score", format="%.4f"),
+#             "Alt Category": st.column_config.TextColumn("Alt Cat", width="small"),
+#             "Alt Score": st.column_config.NumberColumn("Alt Score", format="%.4f"),
+#             "Reason": st.column_config.TextColumn("Reason", width="medium"),
+#         },
+#     )
+#
+# # ── Footer ─────────────────────────────────────────────────────────────────────
+# st.markdown("""
+# <div style="text-align: center; padding: 2rem 0 1rem 0; color: #64748b; font-size: 0.8rem;">
+#     <hr style="border-color: rgba(148, 163, 184, 0.15); margin-bottom: 1rem;">
+#     Built with Streamlit & Plotly · Data powered by SQLite · Model: all-MiniLM-L6-v2
+# </div>
+# """, unsafe_allow_html=True)

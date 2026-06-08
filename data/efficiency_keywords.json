@@ -1,0 +1,98 @@
+{
+  "groups": [
+    {
+      "group_order": 0,
+      "label": "Physics & Thermodynamics",
+      "keywords": [
+        "entropy", "reduction", "exergy", "thermodynamic", "heat loss",
+        "thermal insulation", "perlambatan entropi", "eksergi",
+        "termodinamika", "pengurangan rugi panas", "isolasi termal"
+      ]
+    },
+    {
+      "group_order": 1,
+      "label": "Circular Economy & Waste",
+      "keywords": [
+        "circularity", "waste reduction", "recovery", "zero waste",
+        "biomass utilisation", "waste valorisation", "sirkularitas",
+        "daur ulang", "pemulihan material", "tanpa limbah",
+        "pemanfaatan limbah biomassa", "konversi sampah",
+        "valorisasi limbah", "pengolahan limbah", "ekonomi sirkular",
+        "efisiensi bahan baku", "efisiensi material",
+        "efisiensi sumber daya"
+      ]
+    },
+    {
+      "group_order": 2,
+      "label": "Energy & Resource Efficiency",
+      "keywords": [
+        "energy efficiency", "fuel saving", "specific consumption",
+        "heat rate", "thermal efficiency", "water efficiency",
+        "irrigation efficiency", "agricultural efficiency",
+        "peningkatan efisiensi energi", "penghematan bahan bakar",
+        "efisiensi termal", "konservasi energi",
+        "efisiensi sistem energi", "efisiensi proses produksi",
+        "efisiensi air", "efisiensi irigasi", "efisiensi pertanian",
+        "optimalisasi penggunaan air", "efisiensi sumber daya"
+      ]
+    },
+    {
+      "group_order": 3,
+      "label": "Process & Operational Efficiency",
+      "keywords": [
+        "improving construction efficiency",
+        "increasing project efficiency",
+        "meningkatkan efisiensi pembangunan",
+        "meningkatkan efektivitas proyek",
+        "mengoptimalkan efisiensi konstruksi",
+        "efisiensi pelaksanaan proyek",
+        "efisiensi waktu pembangunan",
+        "efisiensi biaya proyek",
+        "efisiensi pelaksanaan konstruksi",
+        "meningkatkan efisiensi produksi",
+        "meningkatkan produktivitas manufaktur"
+      ]
+    },
+    {
+      "group_order": 4,
+      "label": "Agricultural & Water Efficiency",
+      "keywords": [
+        "water saving", "irrigation efficiency",
+        "agricultural productivity", "smart irrigation",
+        "precision agriculture", "water conservation",
+        "efisiensi irigasi", "pertanian cerdas",
+        "optimalisasi air irigasi", "konservasi air pertanian",
+        "produktivitas pertanian", "penghematan air irigasi",
+        "efisiensi penggunaan air pertanian",
+        "peningkatan efisiensi pertanian",
+        "sistem irigasi efisien", "optimalisasi irigasi",
+        "efisiensi sumber daya air"
+      ]
+    },
+    {
+      "group_order": 5,
+      "label": "Decarbonization & Net Zero",
+      "keywords": [
+        "net zero", "transition", "decarbonization",
+        "carbon neutral", "green infrastructure", "low carbon",
+        "emission reduction", "clean energy transition",
+        "net zero transisi", "dekarbonisasi",
+        "infrastruktur hijau", "rendah karbon",
+        "transisi energi bersih", "pengurangan emisi karbon",
+        "bangunan hijau", "gedung rendah karbon"
+      ]
+    },
+    {
+      "group_order": 6,
+      "label": "Grid & Power Distribution",
+      "keywords": [
+        "grid efficiency", "distribution efficiency",
+        "power quality", "efisiensi jaringan distribusi",
+        "efisiensi jaringan listrik", "kapasitas hosting",
+        "pengurangan deviasi tegangan", "reduksi rugi daya",
+        "efisiensi transmisi listrik",
+        "peningkatan kapasitas jaringan distribusi tenaga listrik"
+      ]
+    }
+  ]
+}

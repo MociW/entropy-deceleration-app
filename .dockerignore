@@ -1,0 +1,29 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# Databases & local state
+entropy.db
+.env
+
+# Output files
+output/
+
+# IDE configurations
+.idea/
+.vscode/
+.DS_Store
+
+# Git
+.git/
+.gitignore

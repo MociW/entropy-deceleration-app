@@ -1,0 +1,24 @@
+{
+  "fields": [
+    {
+      "name": "Energy",
+      "keywords": "solar power photovoltaic panel wind turbine renewable electricity microgrid smart grid battery storage energy storage geothermal thermal collector heat storage PCM phase change material hydrogen fuel fuel cell hydropower nuclear power generation tidal energy distributed control grid stabilization power quality inverter energy transition decarbonization electrification energi surya panel surya PLTS tenaga angin PLTB pembangkit listrik terbarukan grid mikro jaringan cerdas penyimpanan energi baterai panas bumi PLTP pemanas air PATS kolektor termal penyimpanan panas bahan bakar hidrogen kendali terdistribusi stabilitas jaringan listrik kualitas daya sistem tenaga transisi energi PLTA PLTU pembangkitan kelistrikan elektrifikasi kepulauan skala kecil"
+    },
+    {
+      "name": "Environment",
+      "keywords": "pollution wastewater soil contamination air quality circular economy heavy metal adsorption activated carbon hybrid adsorbent waste management remediation phytoremediation biosorption deforestation marine debris groundwater ecosystem ecology biodiversity conservation sustainability carbon emission climate change greenhouse gas global warming carbon footprint microplastic organic compound water treatment desalination pencemaran limbah air tanah kontaminasi kualitas udara ekonomi sirkular logam berat adsorpsi adsorben hibrida karbon aktif pengelolaan sampah remediasi ekosistem ekologi keanekaragaman hayati konservasi keberlanjutan emisi karbon perubahan iklim gas rumah kaca pemanasan global jejak karbon senyawa organik pengolahan air mikroplastik sampah laut AMDAL daur ulang"
+    },
+    {
+      "name": "Infrastructure",
+      "keywords": "road railway bridge building construction civil engineering structural engineering urban planning transportation network public facility dam port airport station area masterplan feasibility study land use smart city regional development spatial planning geospatial GIS mapping pavement address standardization location zone region urban mobility traffic management jalan kereta api jembatan bangunan konstruksi teknik sipil rekayasa struktural tata kota perencanaan kota transportasi angkutan umum fasilitas umum bendungan pelabuhan bandara kawasan stasiun masterplan studi kelayakan tata guna lahan pengembangan kawasan tata ruang spasial pemetaan GIS kota pintar perkerasan jalan standardisasi alamat lokasi zona wilayah manajemen lalu lintas mobilitas perkotaan"
+    },
+    {
+      "name": "Industry",
+      "keywords": "manufacturing industrial process chemical production fine chemical Industry 4.0 internet of things IoT robotics automation supply chain logistics cloud computing architecture software engineering deep learning object detection machine learning artificial intelligence smart factory enterprise resource planning quality control metallurgy material engineering chemical synthesis industri manufaktur proses kimia produksi kimia halus Industri 4.0 internet untuk segala robotika otomasi rantai pasok logistik pabrik pintar komputasi awan rekayasa perangkat lunak pembelajaran mesin kecerdasan buatan deteksi objek kendali mutu metalurgi rekayasa material sintesis kimia teknologi informasi perangkat keras ERP"
+    },
+    {
+      "name": "Academic",
+      "keywords": "social policy governance public administration psychology sociology anthropology education pedagogy curriculum e-learning economics finance business administration law communication humanities arts linguistics literature political science public health healthcare nursing pharmacy medical image clinical diagnosis early disease detection epidemiology medical research mental health sosial kebijakan tata kelola administrasi publik psikologi sosiologi antropologi pendidikan pedagogi kurikulum pembelajaran daring ekonomi keuangan bisnis hukum komunikasi humaniora seni linguistik sastra ilmu politik kesehatan masyarakat keperawatan farmasi citra medis diagnosis klinis deteksi dini penyakit epidemiologi penelitian medis kesehatan mental"
+    }
+  ]
+}

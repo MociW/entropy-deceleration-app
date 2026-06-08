@@ -1,0 +1,19 @@
+{
+  "thresholds": [
+    {
+      "key": "confidence_threshold",
+      "value": 0.20,
+      "description": "Minimum cosine similarity to accept a category (lower = more tolerant)"
+    },
+    {
+      "key": "gap_threshold",
+      "value": 0.03,
+      "description": "Minimum gap between best and second-best category to be considered Clear"
+    },
+    {
+      "key": "eff_threshold",
+      "value": 0.38,
+      "description": "Minimum cosine similarity to flag a title as efficiency-related"
+    }
+  ]
+}
