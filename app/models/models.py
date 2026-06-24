@@ -28,6 +28,14 @@ research_authors = Table(
     Base.metadata,
     Column("research_id", String(36), ForeignKey("researches.id", ondelete="CASCADE"), primary_key=True),
     Column("author_id", String(36), ForeignKey("authors.id", ondelete="CASCADE"), primary_key=True),
+    Column("role", String(128), nullable=True),
+)
+
+research_institutions = Table(
+    "research_institutions",
+    Base.metadata,
+    Column("research_id", String(36), ForeignKey("researches.id", ondelete="CASCADE"), primary_key=True),
+    Column("institution_id", String(36), ForeignKey("institutions.id", ondelete="CASCADE"), primary_key=True),
 )
 
 
@@ -40,25 +48,12 @@ class Research(Base):
     abstract: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     year: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    faculty_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("faculties.id", ondelete="SET NULL"),
-                                                      nullable=True)
     field_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("fields.id", ondelete="SET NULL"),
                                                     nullable=True)
 
     unit: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     cluster: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-
-    # --- ML output columns ---
-    dataset_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
-    status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    alt_category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
-    alt_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    gap: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    is_efficiency: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
-    efficiency_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    contribution_category: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
 
     start_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     finish_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
@@ -67,23 +62,20 @@ class Research(Base):
 
     __table_args__ = (
         Index("idx_researches_year", "year"),
-        Index("idx_researches_dataset_type", "dataset_type"),
     )
 
-    faculty: Mapped[Optional["Faculty"]] = relationship(back_populates="researches")
     field: Mapped[Optional["Field"]] = relationship(back_populates="researches")
+    institutions: Mapped[List["Institution"]] = relationship(secondary=research_institutions, back_populates="researches")
     authors: Mapped[List["Author"]] = relationship(secondary=research_authors, back_populates="researches")
     validation_flag: Mapped[Optional["ResearchValidationFlag"]] = relationship(back_populates="research", uselist=False)
 
-
-class Faculty(Base):
-    __tablename__ = "faculties"
+class Institution(Base):
+    __tablename__ = "institutions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    researches: Mapped[List["Research"]] = relationship(back_populates="faculty")
-
+    researches: Mapped[List["Research"]] = relationship(secondary=research_institutions, back_populates="institutions")
 
 class Field(Base):
     __tablename__ = "fields"
@@ -100,6 +92,7 @@ class Author(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    nidn: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     researches: Mapped[List["Research"]] = relationship(secondary=research_authors, back_populates="authors")
 
@@ -113,7 +106,14 @@ class ResearchValidationFlag(Base):
 
     is_entropy: Mapped[bool] = mapped_column(Boolean, default=False)
     category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     alt_category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    alt_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    gap: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_efficiency: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    efficiency_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     model_version: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

@@ -151,6 +151,28 @@ def remove_efficiency_keyword(keyword_id: str, session: Session | None = None) -
     return False
 
 
+def load_efficiency_keyword_map(lang: str | None = None, session: Session | None = None) -> dict[str, list[str]]:
+    """Return {group_label: [keyword1, keyword2, ...]} from DB, optionally filtered by language."""
+    try:
+        close_session = session is None
+        session = session or _get_session()
+        groups = session.query(EfficiencyKeywordGroup).order_by(EfficiencyKeywordGroup.group_order).all()
+        if groups:
+            result = {}
+            for group in groups:
+                keywords = [k.keyword for k in group.keywords if lang is None or k.language == lang]
+                if keywords:
+                    result[group.label] = keywords
+            if close_session:
+                session.close()
+            return result
+        if close_session:
+            session.close()
+    except Exception:
+        pass
+    return {}
+
+
 def add_cue_word(word: str, session: Session | None = None) -> None:
     close_session = session is None
     session = session or _get_session()

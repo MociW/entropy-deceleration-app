@@ -1,16 +1,13 @@
 import sys
 from pathlib import Path
 
-# Ensure project root is on sys.path so `app.*` imports work under Streamlit
 _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
-import json
 
 from app.core.database import engine, init_db
 
@@ -211,41 +208,41 @@ def load_data(dataset_type: str) -> pd.DataFrame:
     """Load categorization results from the SQLite database."""
     init_db()
     query = """
-        SELECT title AS "Title",
-               year AS "Year",
-               category AS "Category",
-               status AS "Status",
-               is_efficiency AS "Efficiency Focus",
-               confidence_score AS "Category Score",
-               gap AS "Category Gap",
-               efficiency_score AS "Max Efficiency Score",
-               alt_category AS "Alt Category",
-               alt_score AS "Alt Score",
-               reason AS "Reason"
-        FROM researches
-        WHERE dataset_type = :dataset_type
-        ORDER BY year, title
+        SELECT r.title AS "Title",
+               r.year AS "Year",
+               v.category AS "Category",
+               v.status AS "Status",
+               v.is_efficiency AS "Efficiency Focus",
+               v.confidence_score AS "Category Score",
+               v.gap AS "Category Gap",
+               v.efficiency_score AS "Max Efficiency Score",
+               v.alt_category AS "Alt Category",
+               v.alt_score AS "Alt Score",
+               v.reason AS "Reason"
+        FROM researches r
+        LEFT JOIN research_validation_flags v ON r.id = v.research_id
+        WHERE r.contribution_category = :dataset_type
+        ORDER BY r.year, r.title
     """
     df = pd.read_sql(query, engine, params={"dataset_type": dataset_type})
     df["Year"] = df["Year"].astype(str)
     return df
 
 
-# ── Load entropy keyword reference ──────────────────────────────────────────────
-data_dir = Path(__file__).resolve().parent.parent.parent / "data"
+# ── Load entropy keyword reference from DB ──────────────────────────────────────
+from app.services.keyword_store import load_efficiency_keyword_map
 
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def load_entropy_keywords():
-    with open(data_dir / "entropy-deceleration-field.json") as f:
-        return json.load(f)
+    return load_efficiency_keyword_map(lang="EN")
 
 
 entropy_keywords = load_entropy_keywords()
 
 
 # ── Modal dialog for keywords ───────────────────────────────────────────────────
-@st.dialog("Entropy Deceleration Keywords", width="large")
+@st.dialog("Entropy Keywords", width="large")
 def _show_keywords(category: str):
     st.subheader(category)
     for kw in entropy_keywords[category]:
@@ -315,8 +312,8 @@ year_count = df_year["Year"].nunique()
 
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Total Records", f"{total:,}")
-m2.metric("Entropy Deceleration Related", f"{yes_count:,}")
-m3.metric("% Entropy Deceleration", f"{yes_pct:.1f}%")
+m2.metric("Entropy Related", f"{yes_count:,}")
+m3.metric("% Entropy ", f"{yes_pct:.1f}%")
 # m4.metric("Clear Category", f"{clear_pct:.0f}%")
 m4.metric("Years Covered", year_count)
 
@@ -325,7 +322,7 @@ st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 1: Efficiency Flag per Year
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("## Entropy Deceleration Related Research per Year")
+st.markdown("## Entropy Related Research per Year")
 
 eff_year_data = (
     df_year.groupby(["Year", "Efficiency Focus"]).size()
@@ -343,7 +340,7 @@ for i, year in enumerate(years):
     fig = go.Figure(
         data=[
             go.Pie(
-                labels=["Entropy Deceleration", "Non-Entropy Deceleration"],
+                labels=["Entropy ", "Non-Entropy "],
                 values=[y_count, n_count],
                 hole=0.6,
                 marker_colors=[COLORS["teal"], "#e2e8f0"],
@@ -405,11 +402,12 @@ if st.session_state["drill_year"]:
     cat_drill = (
         df_drill.groupby("Category")["Efficiency Focus"]
         .apply(lambda x: (x == "Yes").sum())
-        .reset_index(name="Entropy Deceleration Count")
+        .reset_index(name="Entropy Count")
     )
     cat_drill_total = df_drill.groupby("Category").size().reset_index(name="Total")
     cat_drill = cat_drill.merge(cat_drill_total, on="Category")
 
+    DESIRED_ORDER = ["Energy", "Environment", "Industry", "Infrastructure","Information","Academic"]
     fig_drill = go.Figure()
     fig_drill.add_trace(go.Bar(
         x=cat_drill["Category"],
@@ -422,16 +420,15 @@ if st.session_state["drill_year"]:
     ))
     fig_drill.add_trace(go.Bar(
         x=cat_drill["Category"],
-        y=cat_drill["Entropy Deceleration Count"],
-        name="Entropy Deceleration Related",
+        y=cat_drill["Entropy Count"],
+        name="Entropy Related",
         marker_color=COLORS["teal"],
-        text=cat_drill["Entropy Deceleration Count"],
+        text=cat_drill["Entropy Count"],
         textposition="outside",
         textfont=dict(color=COLORS["teal"], size=11),
     ))
     fig_drill.update_layout(
         **PLOTLY_LAYOUT,
-        **_GRID_AXES,
         title=dict(
             text=f"Category Breakdown — {drill_year}",
             font=dict(size=16, color=COLORS["text"]),
@@ -440,11 +437,13 @@ if st.session_state["drill_year"]:
         height=400,
         margin=dict(l=40, r=40, t=60, b=40),
         legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+        xaxis={**_GRID_AXES["xaxis"], "categoryorder": "array", "categoryarray": DESIRED_ORDER},
+        yaxis=_GRID_AXES["yaxis"],
     )
     st.plotly_chart(fig_drill, width="stretch", config=PLOTLY_CONFIG)
 
-    # Entropy Deceleration keyword reference — modal per category
-    st.caption("**Entropy Deceleration Keywords by Category**")
+    # Entropy keyword reference — modal per category
+    st.caption("**Entropy Keywords by Category**")
     kw_btn_cols = st.columns(len(entropy_keywords))
     for j, cat in enumerate(entropy_keywords.keys()):
         with kw_btn_cols[j]:
@@ -452,7 +451,7 @@ if st.session_state["drill_year"]:
                 _show_keywords(cat)
 
     # Top efficiency Yes Researchs table
-    st.markdown(f"#### Entropy Deceleration Researches — {drill_year}")
+    st.markdown(f"#### Entropy Researches — {drill_year}")
     yes_drill = df_drill[df_drill["Efficiency Focus"] == "Yes"].sort_values(
         "Max Efficiency Score", ascending=False
     )
@@ -471,9 +470,9 @@ if st.session_state["drill_year"]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SECTION 2: Trend line — Entropy Deceleration Related count per year
+# SECTION 2: Trend line — Entropy Related count per year
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("## Entropy Deceleration Research Trend")
+st.markdown("## Entropy Research Trend")
 
 eff_yes_only = eff_year_data[eff_year_data["Efficiency Focus"] == "Yes"].copy()
 eff_no_only = eff_year_data[eff_year_data["Efficiency Focus"] == "No"].copy()
@@ -483,7 +482,7 @@ fig_trend.add_trace(go.Scatter(
     x=eff_yes_only["Year"],
     y=eff_yes_only["Count"],
     mode="lines+markers+text",
-    name="Entropy Deceleration Related",
+    name="Entropy Related",
     line=dict(color=COLORS["teal"], width=3),
     marker=dict(size=10, color=COLORS["teal"], line=dict(width=2, color="#ffffff")),
     text=eff_yes_only["Count"],
@@ -497,7 +496,7 @@ if not eff_no_only.empty:
         x=eff_no_only["Year"],
         y=eff_no_only["Count"],
         mode="lines+markers",
-        name="Non-Entropy Deceleration",
+        name="Non-Entropy ",
         line=dict(color=COLORS["text_muted"], width=2, dash="dot"),
         marker=dict(size=7, color=COLORS["text_muted"]),
     ))
@@ -506,7 +505,7 @@ max_y = max(eff_yes_only["Count"].max(), eff_no_only["Count"].max() if not eff_n
 fig_trend.update_layout(
     **PLOTLY_LAYOUT,
     title=dict(
-        text="Trend of Entropy Deceleration Projects Over Time",
+        text="Trend of Entropy Projects Over Time",
         font=dict(size=16, color=COLORS["text"]),
     ),
     height=420,
@@ -530,7 +529,7 @@ st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CONFIG)
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 3: Efficiency per Category × Year
 # ══════════════════════════════════════════════════════════════════════════════
-# st.markdown("## Entropy Deceleration by Category & Year")
+# st.markdown("## Entropy by Category & Year")
 #
 # fig3_col1, fig3_col2 = st.columns([3, 2])
 #
@@ -559,16 +558,16 @@ st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CONFIG)
 #         text=[[f"{v:.1f}%" for v in row] for row in heatmap_data.values],
 #         texttemplate="%{text}",
 #         textfont=dict(size=12, color=COLORS["text"]),
-#         hovertemplate="Category: %{y}<br>Year: %{x}<br>% Entropy Deceleration: %{z:.1f}%<extra></extra>",
+#         hovertemplate="Category: %{y}<br>Year: %{x}<br>% Entropy : %{z:.1f}%<extra></extra>",
 #         colorbar=dict(
-#             title=dict(text="% Entropy Deceleration", font=dict(color=COLORS["text_muted"])),
+#             title=dict(text="% Entropy ", font=dict(color=COLORS["text_muted"])),
 #             tickfont=dict(color=COLORS["text_muted"]),
 #         ),
 #     ))
 #     fig_heat.update_layout(
 #         **PLOTLY_LAYOUT,
 #         title=dict(
-#             text="% Entropy Deceleration Related by Category & Year",
+#             text="% Entropy Related by Category & Year",
 #             font=dict(size=14, color=COLORS["text"]),
 #         ),
 #         height=380,
@@ -604,7 +603,7 @@ st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CONFIG)
 #         **PLOTLY_LAYOUT,
 #         **_GRID_AXES,
 #         title=dict(
-#             text="Entropy Deceleration Count by Category per Year",
+#             text="Entropy Count by Category per Year",
 #             font=dict(size=14, color=COLORS["text"]),
 #         ),
 #         barmode="group",
@@ -721,7 +720,7 @@ with dist_col2:
 #     summary_pivot["Yes"] = 0
 #
 # summary_pivot["Total"] = summary_pivot["No"] + summary_pivot["Yes"]
-# summary_pivot["% Entropy Deceleration"] = (summary_pivot["Yes"] / summary_pivot["Total"] * 100).round(1)
+# summary_pivot["% Entropy "] = (summary_pivot["Yes"] / summary_pivot["Total"] * 100).round(1)
 #
 # st.dataframe(
 #     summary_pivot.sort_values(["Year", "Category"]),
@@ -730,10 +729,10 @@ with dist_col2:
 #     column_config={
 #         "Year": st.column_config.TextColumn("Year"),
 #         "Category": st.column_config.TextColumn("Category"),
-#         "No": st.column_config.NumberColumn("Non-Entropy Deceleration", format="%d"),
-#         "Yes": st.column_config.NumberColumn("Entropy Deceleration", format="%d"),
+#         "No": st.column_config.NumberColumn("Non-Entropy ", format="%d"),
+#         "Yes": st.column_config.NumberColumn("Entropy ", format="%d"),
 #         "Total": st.column_config.NumberColumn("Total", format="%d"),
-#         "% Entropy Deceleration": st.column_config.NumberColumn("% Entropy Deceleration", format="%.1f%%"),
+#         "% Entropy ": st.column_config.NumberColumn("% Entropy ", format="%.1f%%"),
 #     },
 # )
 #
@@ -753,7 +752,7 @@ with dist_col2:
 #             "Year": st.column_config.TextColumn("Year", width="small"),
 #             "Category": st.column_config.TextColumn("Category", width="small"),
 #             "Status": st.column_config.TextColumn("Status", width="small"),
-#             "Efficiency Focus": st.column_config.TextColumn("Entropy Deceleration", width="small"),
+#             "Efficiency Focus": st.column_config.TextColumn("Entropy ", width="small"),
 #             "Category Score": st.column_config.NumberColumn("Score", format="%.4f"),
 #             "Category Gap": st.column_config.NumberColumn("Gap", format="%.4f"),
 #             "Max Efficiency Score": st.column_config.NumberColumn("Eff Score", format="%.4f"),

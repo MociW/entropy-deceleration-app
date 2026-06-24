@@ -136,18 +136,7 @@
     "emergency preparedness",
     "risk-informed maintenance"
   ],
-  "Academic": [
-    "Shannon entropy",
-    "information gain",
-    "control entropy",
-    "signal-to-noise ratio",
-    "sample entropy",
-    "permutation entropy",
-    "spectral entropy",
-    "transfer entropy",
-    "building physics"
-  ],
-  "Information and Digital Engineering": [
+    "Information": [
     "data governance",
     "data cleaning",
     "normalization",
@@ -165,5 +154,16 @@
     "IoT monitoring",
     "cyber-physical system",
     "automation"
+  ],
+  "Academic": [
+    "Shannon entropy",
+    "information gain",
+    "control entropy",
+    "signal-to-noise ratio",
+    "sample entropy",
+    "permutation entropy",
+    "spectral entropy",
+    "transfer entropy",
+    "building physics"
   ]
 }

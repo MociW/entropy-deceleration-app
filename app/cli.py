@@ -12,7 +12,12 @@ from app.services.keyword_store import (
     remove_efficiency_keyword,
     add_cue_word,
 )
-from app.models.models import CategorizationConfig, EfficiencyKeywordGroup, EfficiencyKeyword, Research
+from app.models.models import (
+    CategorizationConfig,
+    EfficiencyKeywordGroup,
+    EfficiencyKeyword,
+    Research,
+)
 
 
 def _fallback_eff_keywords():
@@ -24,27 +29,31 @@ def _fallback_eff_keywords():
 
 
 def cmd_categorize(args):
-    from app.services.categorizer import ResearchCategorizer, load_data, save_outputs, get_categorization_texts
-    from app.services.cleaner import clean_title, sanitize_casing
+    from app.services.categorizer import (
+        ResearchCategorizer,
+        load_data,
+        preprocess,
+        save_outputs,
+        save_to_db,
+        load_config,
+    )
 
-    # Ensure database tables exist
     init_db()
 
+    # 1. Load raw data
     df = load_data(args.file)
 
-    # Sanitize title and abstract casing (e.g. convert uppercase to mixed case)
-    df["title"] = df["title"].apply(sanitize_casing)
-    if "abstract" in df.columns:
-        df["abstract"] = df["abstract"].apply(sanitize_casing)
+    # 2. Preprocess — sanitize casing, clean titles, extract categorization texts
+    df, texts = preprocess(df)
 
-    categorizer = ResearchCategorizer()
+    # 3. Load ML config from DB (or constants fallback)
+    config = load_config()
 
-    # Prioritize abstract over title for categorization
-    texts = get_categorization_texts(df)
+    # 4. Categorize — pure ML, no DB, no I/O
+    categorizer = ResearchCategorizer(config=config)
     results = categorizer.categorize(texts)
 
-    cleaned_titles = [clean_title(t) for t in df["title"]]
-    df["title"] = cleaned_titles
+    # 5. Attach results to dataframe
     df["category"] = [r["category"] for r in results]
     df["status"] = [r["status"] for r in results]
     df["confidence_score"] = [r["confidence_score"] for r in results]
@@ -55,38 +64,14 @@ def cmd_categorize(args):
     df["is_efficiency"] = [r["is_efficiency"] for r in results]
     df["efficiency_score"] = [r["efficiency_score"] for r in results]
 
-    # Save to CSV/Excel files (backwards compat)
+    # 6. Save to CSV/Excel files
     save_outputs(df, Path(args.out), args.out_filename)
 
-    # Save to SQLite database
-    dataset_type = args.dataset_type
+    # 7. Save to database
     session = SessionLocal()
     try:
-        # Clear previous entries for this dataset type
-        session.query(Research).filter_by(dataset_type=dataset_type).delete()
-        session.commit()
-
-        for _, row in df.iterrows():
-            research = Research(
-                title=row["title"],
-                abstract=row.get("abstract", None) if "abstract" in df.columns else None,
-                year=int(row["year"]) if row["year"] else 0,
-                dataset_type=dataset_type,
-                category=row["category"],
-                status=row["status"],
-                confidence_score=row["confidence_score"],
-                alt_category=row["alt_category"],
-                alt_score=row["alt_score"],
-                gap=row["gap"],
-                reason=row["reason"] if row["reason"] else None,
-                is_efficiency=row["is_efficiency"],
-                efficiency_score=row["efficiency_score"],
-            )
-            session.add(research)
-
-        session.commit()
-        count = session.query(Research).filter_by(dataset_type=dataset_type).count()
-        print(f"  Saved {count} records to SQLite (dataset_type='{dataset_type}')")
+        count = save_to_db(df, args.dataset_type, session)
+        print(f"  Saved {count} records to SQLite (contribution_category='{args.dataset_type}')")
     except Exception as e:
         session.rollback()
         print(f"  Warning: failed to save to database: {e}")
@@ -262,8 +247,8 @@ def cmd_seed_config(args):
             print(f"Warning: {fields_path} not found.")
 
         # 3. Seed both English (EN) and Indonesian (ID) keyword lists
-        en_path = data_dir / "entropy-deceleration-field.json"
-        id_path = data_dir / "entropy-deceleration-field-id.json"
+        en_path = data_dir / "entropy_field_v2.json"
+        id_path = data_dir / "entropy_field_v2_id.json"
 
         en_eff_data = {}
         id_eff_data = {}
@@ -285,7 +270,7 @@ def cmd_seed_config(args):
             session.commit()
 
             # Preserve standard logical order
-            logical_order = ["Energy", "Environment", "Infrastructure", "Industry", "Academic"]
+            logical_order = ["Energy", "Environment", "Infrastructure", "Industry", "Information","Academic"]
             groups_to_add = [g for g in logical_order if g in all_groups]
             for g in all_groups:
                 if g not in groups_to_add:
