@@ -22,7 +22,7 @@ CREATE TABLE researches (
     field_id VARCHAR(36) NULL,
     unit VARCHAR(255) NULL,
     cluster VARCHAR(255) NULL,
-    contribution_category VARCHAR(40) NULL, -- this column to categorize is it [research, commiunity_service]
+    contribution_category VARCHAR(40) NULL, -- this column to categorize is it [research, community_service]
 
     start_at DATE NULL,
     finish_at DATE NULL,
