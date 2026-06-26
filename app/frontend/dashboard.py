@@ -260,7 +260,7 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0;
-    ">Entropy Deceleration</h1>
+    ">Entropy Dashboard</h1>
     <p style="color: #64748b; font-size: 1rem; margin-top: 0.25rem;">
         Research Classification & Efficiency Analysis Dashboard
     </p>
