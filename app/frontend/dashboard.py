@@ -382,7 +382,7 @@ for i, year in enumerate(years):
     )
     fig.update_layout(**_GRID_AXES)
     with cols[i]:
-        st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
 # ── Year drill-down buttons ───────────────────────────────────────────────────
 btn_cols = st.columns(len(years))
@@ -449,7 +449,7 @@ if st.session_state["drill_year"]:
         xaxis={**_GRID_AXES["xaxis"], "categoryorder": "array", "categoryarray": DESIRED_ORDER},
         yaxis=_GRID_AXES["yaxis"],
     )
-    st.plotly_chart(fig_drill, width="stretch", config=PLOTLY_CONFIG)
+    st.plotly_chart(fig_drill, use_container_width=True, config=PLOTLY_CONFIG)
 
     # Entropy keyword reference — modal per category
     st.caption("**Entropy Keywords by Category**")
@@ -466,7 +466,7 @@ if st.session_state["drill_year"]:
     )
     st.dataframe(
         yes_drill[["Title", "Category", "Max Efficiency Score", "Reason"]].head(15),
-        width="stretch",
+        use_container_width=True,
         hide_index=True,
         column_config={
             "Title": st.column_config.TextColumn("Title", width="large"),
@@ -532,7 +532,7 @@ fig_trend.update_layout(
     ),
     legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
 )
-st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CONFIG)
+st.plotly_chart(fig_trend, use_container_width=True, config=PLOTLY_CONFIG)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -576,7 +576,7 @@ with dist_col1:
             )
         ],
     )
-    st.plotly_chart(fig_donut, width="stretch", config=PLOTLY_CONFIG)
+    st.plotly_chart(fig_donut, use_container_width=True, config=PLOTLY_CONFIG)
 
 with dist_col2:
     # Status breakdown per category
@@ -615,7 +615,7 @@ with dist_col2:
         margin=dict(l=40, r=40, t=60, b=40),
         legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
     )
-    st.plotly_chart(fig_status, width="stretch", config=PLOTLY_CONFIG)
+    st.plotly_chart(fig_status, use_container_width=True, config=PLOTLY_CONFIG)
 
 
 
@@ -659,7 +659,7 @@ with conf_col1:
         margin=dict(l=40, r=40, t=60, b=40),
         bargap=0.05,
     )
-    st.plotly_chart(fig_hist, width="stretch", config=PLOTLY_CONFIG)
+    st.plotly_chart(fig_hist, use_container_width=True, config=PLOTLY_CONFIG)
 
 with conf_col2:
     low_conf = int((df_year["Category Score"] < _settings.CONFIDENCE_THRESHOLD).sum())
@@ -721,7 +721,7 @@ else:
 
     st.dataframe(
         display_authors,
-        width="stretch",
+        use_container_width=True,
         hide_index=True,
         column_config={
             "Author": st.column_config.TextColumn("Author", width="large"),
@@ -748,7 +748,7 @@ with st.expander("📋 View Full Dataset", expanded=False):
     st.caption(f"{len(display_df):,} records")
     st.dataframe(
         display_df,
-        width="stretch",
+        use_container_width=True,
         hide_index=True,
         column_config={
             "Title": st.column_config.TextColumn("Title", width="large"),
