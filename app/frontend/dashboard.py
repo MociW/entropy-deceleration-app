@@ -10,6 +10,10 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from app.core.database import engine, init_db
+from app.core.logging import configure_logging
+
+configure_logging()
+init_db()
 
 # ── Page configuration ─────────────────────────────────────────────────────────
 st.set_page_config(
@@ -206,7 +210,6 @@ PLOTLY_CONFIG = {"scrollZoom": False, "displayModeBar": False}
 @st.cache_data(ttl=300)
 def load_data(dataset_type: str) -> pd.DataFrame:
     """Load categorization results from the SQLite database."""
-    init_db()
     query = """
         SELECT r.title AS "Title",
                r.year AS "Year",
@@ -297,9 +300,16 @@ if df.empty:
     st.code("python -m app.cli categorize --file data/reserach-project.xlsx --dataset_type research")
     st.stop()
 
-# Limit to the latest five years in the dataset
-years = sorted(df["Year"].unique())[-5:]
-df_year = df[df["Year"].isin(years)]
+# ── Year range filter ──────────────────────────────────────────────────────────
+all_years = sorted(df["Year"].unique())
+_default_start = all_years[-5] if len(all_years) >= 5 else all_years[0]
+year_range = st.sidebar.select_slider(
+    "📅 Year Range",
+    options=all_years,
+    value=(_default_start, all_years[-1]),
+)
+df_year = df[(df["Year"] >= year_range[0]) & (df["Year"] <= year_range[1])]
+years = sorted(df_year["Year"].unique())
 
 # ── Infographic Summary ────────────────────────────────────────────────────────
 total = len(df_year)
@@ -314,7 +324,6 @@ m1, m2, m3, m4 = st.columns(4)
 m1.metric("Total Records", f"{total:,}")
 m2.metric("Entropy Related", f"{yes_count:,}")
 m3.metric("% Entropy ", f"{yes_pct:.1f}%")
-# m4.metric("Clear Category", f"{clear_pct:.0f}%")
 m4.metric("Years Covered", year_count)
 
 st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
@@ -527,95 +536,7 @@ st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CONFIG)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SECTION 3: Efficiency per Category × Year
-# ══════════════════════════════════════════════════════════════════════════════
-# st.markdown("## Entropy by Category & Year")
-#
-# fig3_col1, fig3_col2 = st.columns([3, 2])
-#
-# with fig3_col1:
-#     # Heatmap: % Yes per (Category × Year)
-#     cat_pivot = (
-#         df_year.groupby(["Year", "Category"])["Efficiency Focus"]
-#         .apply(lambda x: (x == "Yes").mean() * 100)
-#         .reset_index(name="Percent Yes")
-#     )
-#
-#     # Pivot for heatmap
-#     heatmap_data = cat_pivot.pivot(index="Category", columns="Year", values="Percent Yes").fillna(0)
-#
-#     fig_heat = go.Figure(data=go.Heatmap(
-#         z=heatmap_data.values,
-#         x=heatmap_data.columns.tolist(),
-#         y=heatmap_data.index.tolist(),
-#         colorscale=[
-#             [0.0, "#f8fafc"],
-#             [0.25, "rgba(13, 148, 136, 0.1)"],
-#             [0.5, "rgba(13, 148, 136, 0.3)"],
-#             [0.75, "rgba(13, 148, 136, 0.6)"],
-#             [1.0, "#0d9488"],
-#         ],
-#         text=[[f"{v:.1f}%" for v in row] for row in heatmap_data.values],
-#         texttemplate="%{text}",
-#         textfont=dict(size=12, color=COLORS["text"]),
-#         hovertemplate="Category: %{y}<br>Year: %{x}<br>% Entropy : %{z:.1f}%<extra></extra>",
-#         colorbar=dict(
-#             title=dict(text="% Entropy ", font=dict(color=COLORS["text_muted"])),
-#             tickfont=dict(color=COLORS["text_muted"]),
-#         ),
-#     ))
-#     fig_heat.update_layout(
-#         **PLOTLY_LAYOUT,
-#         title=dict(
-#             text="% Entropy Related by Category & Year",
-#             font=dict(size=14, color=COLORS["text"]),
-#         ),
-#         height=380,
-#         margin=dict(l=40, r=40, t=60, b=40),
-#     )
-#     st.plotly_chart(fig_heat, width="stretch", config=PLOTLY_CONFIG)
-#
-# with fig3_col2:
-#     # Per-category grouped bar chart
-#     cat_eff_year = (
-#         df_year.groupby(["Year", "Category", "Efficiency Focus"]).size()
-#         .reset_index(name="Count")
-#     )
-#     cat_eff_yes = cat_eff_year[cat_eff_year["Efficiency Focus"] == "Yes"]
-#
-#     year_colors = [COLORS["primary"], COLORS["secondary"], COLORS["accent"],
-#                    COLORS["success"], COLORS["warning"], COLORS["danger"]]
-#
-#     fig_cat_bar = go.Figure()
-#     for j, yr in enumerate(sorted(cat_eff_yes["Year"].unique())):
-#         yr_data = cat_eff_yes[cat_eff_yes["Year"] == yr]
-#         fig_cat_bar.add_trace(go.Bar(
-#             x=yr_data["Category"],
-#             y=yr_data["Count"],
-#             name=str(yr),
-#             marker_color=year_colors[j % len(year_colors)],
-#             text=yr_data["Count"],
-#             textposition="outside",
-#             textfont=dict(size=10),
-#         ))
-#
-#     fig_cat_bar.update_layout(
-#         **PLOTLY_LAYOUT,
-#         **_GRID_AXES,
-#         title=dict(
-#             text="Entropy Count by Category per Year",
-#             font=dict(size=14, color=COLORS["text"]),
-#         ),
-#         barmode="group",
-#         height=380,
-#         margin=dict(l=40, r=40, t=60, b=40),
-#         legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-#     )
-#     st.plotly_chart(fig_cat_bar, width="stretch", config=PLOTLY_CONFIG)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# SECTION 4: Category Distribution
+# SECTION 3: Category Distribution
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("## Category Distribution")
 
@@ -697,75 +618,159 @@ with dist_col2:
     st.plotly_chart(fig_status, width="stretch", config=PLOTLY_CONFIG)
 
 
+
+
 # ══════════════════════════════════════════════════════════════════════════════
-# SECTION 5: Raw Data Table
+# SECTION 5: Model Confidence Distribution
 # ══════════════════════════════════════════════════════════════════════════════
-# st.markdown("## Raw Data Explorer")
-#
-# # Summary pivot table
-# summary_table = (
-#     df_year.groupby(["Year", "Category", "Efficiency Focus"]).size()
-#     .reset_index(name="Count")
-# )
-# summary_pivot = summary_table.pivot_table(
-#     index=["Year", "Category"],
-#     columns="Efficiency Focus",
-#     values="Count",
-#     fill_value=0,
-# ).reset_index()
-#
-# if "No" not in summary_pivot.columns:
-#     summary_pivot["No"] = 0
-# if "Yes" not in summary_pivot.columns:
-#     summary_pivot["Yes"] = 0
-#
-# summary_pivot["Total"] = summary_pivot["No"] + summary_pivot["Yes"]
-# summary_pivot["% Entropy "] = (summary_pivot["Yes"] / summary_pivot["Total"] * 100).round(1)
-#
-# st.dataframe(
-#     summary_pivot.sort_values(["Year", "Category"]),
-#     width="stretch",
-#     hide_index=True,
-#     column_config={
-#         "Year": st.column_config.TextColumn("Year"),
-#         "Category": st.column_config.TextColumn("Category"),
-#         "No": st.column_config.NumberColumn("Non-Entropy ", format="%d"),
-#         "Yes": st.column_config.NumberColumn("Entropy ", format="%d"),
-#         "Total": st.column_config.NumberColumn("Total", format="%d"),
-#         "% Entropy ": st.column_config.NumberColumn("% Entropy ", format="%.1f%%"),
-#     },
-# )
-#
-# # Full data with search
-# with st.expander("📋 View Full Dataset", expanded=False):
-#     search_term = st.text_input("🔍 Search titles...", placeholder="Type to filter by title")
-#     display_df = df_year.copy()
-#     if search_term:
-#         display_df = display_df[display_df["Title"].str.contains(search_term, case=False, na=False)]
-#
-#     st.dataframe(
-#         display_df,
-#         width="stretch",
-#         hide_index=True,
-#         column_config={
-#             "Title": st.column_config.TextColumn("Title", width="large"),
-#             "Year": st.column_config.TextColumn("Year", width="small"),
-#             "Category": st.column_config.TextColumn("Category", width="small"),
-#             "Status": st.column_config.TextColumn("Status", width="small"),
-#             "Efficiency Focus": st.column_config.TextColumn("Entropy ", width="small"),
-#             "Category Score": st.column_config.NumberColumn("Score", format="%.4f"),
-#             "Category Gap": st.column_config.NumberColumn("Gap", format="%.4f"),
-#             "Max Efficiency Score": st.column_config.NumberColumn("Eff Score", format="%.4f"),
-#             "Alt Category": st.column_config.TextColumn("Alt Cat", width="small"),
-#             "Alt Score": st.column_config.NumberColumn("Alt Score", format="%.4f"),
-#             "Reason": st.column_config.TextColumn("Reason", width="medium"),
-#         },
-#     )
-#
-# # ── Footer ─────────────────────────────────────────────────────────────────────
-# st.markdown("""
-# <div style="text-align: center; padding: 2rem 0 1rem 0; color: #64748b; font-size: 0.8rem;">
-#     <hr style="border-color: rgba(148, 163, 184, 0.15); margin-bottom: 1rem;">
-#     Built with Streamlit & Plotly · Data powered by SQLite · Model: all-MiniLM-L6-v2
-# </div>
-# """, unsafe_allow_html=True)
+st.markdown("## Model Confidence Distribution")
+
+from app.core.config import settings as _settings
+
+conf_col1, conf_col2 = st.columns([3, 2])
+
+with conf_col1:
+    fig_hist = go.Figure(data=[go.Histogram(
+        x=df_year["Category Score"],
+        nbinsx=25,
+        marker_color=COLORS["primary"],
+        opacity=0.85,
+        hovertemplate="Score: %{x:.2f}<br>Count: %{y}<extra></extra>",
+    )])
+    fig_hist.add_vline(
+        x=_settings.CONFIDENCE_THRESHOLD,
+        line_dash="dash",
+        line_color=COLORS["danger"],
+        line_width=2,
+        annotation_text=f"Threshold ({_settings.CONFIDENCE_THRESHOLD})",
+        annotation_position="top right",
+        annotation_font_color=COLORS["danger"],
+    )
+    fig_hist.update_layout(
+        **PLOTLY_LAYOUT,
+        **_GRID_AXES,
+        title=dict(
+            text="Category Score Distribution",
+            font=dict(size=14, color=COLORS["text"]),
+        ),
+        xaxis_title="Confidence Score",
+        yaxis_title="Count",
+        height=380,
+        margin=dict(l=40, r=40, t=60, b=40),
+        bargap=0.05,
+    )
+    st.plotly_chart(fig_hist, width="stretch", config=PLOTLY_CONFIG)
+
+with conf_col2:
+    low_conf = int((df_year["Category Score"] < _settings.CONFIDENCE_THRESHOLD).sum())
+    ambiguous = int((df_year["Status"] == "Ambiguous").sum())
+    uncategorized = int((df_year["Status"] == "Uncategorized").sum())
+    clear = int((df_year["Status"] == "Clear").sum())
+    conf_total = len(df_year)
+
+    st.markdown("### Classification Quality")
+    st.metric("Clear", f"{clear:,}", f"{clear/conf_total*100:.1f}%" if conf_total else "0%")
+    st.metric("Ambiguous", f"{ambiguous:,}", f"{ambiguous/conf_total*100:.1f}%" if conf_total else "0%",
+              delta_color="inverse")
+    st.metric("Uncategorized", f"{uncategorized:,}", f"{uncategorized/conf_total*100:.1f}%" if conf_total else "0%",
+              delta_color="inverse")
+    st.caption(f"Confidence threshold: **{_settings.CONFIDENCE_THRESHOLD}** · Gap threshold: **{_settings.GAP_THRESHOLD}**")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 6: Author Analytics
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("## Author Analytics")
+
+
+@st.cache_data(ttl=300)
+def load_author_stats(dataset_type: str) -> pd.DataFrame:
+    """Top authors by total research output and entropy contribution."""
+    query = """
+        SELECT
+            a.name        AS "Author",
+            a.nidn        AS "NIDN",
+            COUNT(r.id)   AS "Total",
+            SUM(CASE WHEN v.is_efficiency = 'Yes' THEN 1 ELSE 0 END) AS "Entropy"
+        FROM authors a
+        JOIN research_authors ra ON a.id = ra.author_id
+        JOIN researches r        ON ra.research_id = r.id
+        LEFT JOIN research_validation_flags v ON r.id = v.research_id
+        WHERE r.contribution_category = :dataset_type
+        GROUP BY a.id
+        ORDER BY "Total" DESC
+    """
+    df_auth = pd.read_sql(query, engine, params={"dataset_type": dataset_type})
+    df_auth["% Entropy"] = (df_auth["Entropy"] / df_auth["Total"] * 100).round(1)
+    return df_auth
+
+
+author_df = load_author_stats(dataset_map[file_choice])
+
+if author_df.empty:
+    st.info("No author data available for this dataset.")
+else:
+    auth_search = st.text_input("🔍 Search authors...", placeholder="Type a name or NIDN", key="author_search")
+    display_authors = author_df.copy()
+    if auth_search:
+        mask = (
+            display_authors["Author"].str.contains(auth_search, case=False, na=False)
+            | display_authors["NIDN"].astype(str).str.contains(auth_search, case=False, na=False)
+        )
+        display_authors = display_authors[mask]
+
+    st.dataframe(
+        display_authors,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "Author": st.column_config.TextColumn("Author", width="large"),
+            "NIDN": st.column_config.TextColumn("NIDN", width="medium"),
+            "Total": st.column_config.NumberColumn("Total", format="%d"),
+            "Entropy": st.column_config.NumberColumn("Entropy", format="%d"),
+            "% Entropy": st.column_config.NumberColumn("% Entropy", format="%.1f%%"),
+        },
+    )
+    st.caption(f"{len(display_authors):,} authors shown")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 7: Raw Data Explorer
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("## Raw Data Explorer")
+
+with st.expander("📋 View Full Dataset", expanded=False):
+    search_term = st.text_input("🔍 Search titles...", placeholder="Type to filter by title", key="raw_search")
+    display_df = df_year.copy()
+    if search_term:
+        display_df = display_df[display_df["Title"].str.contains(search_term, case=False, na=False)]
+
+    st.caption(f"{len(display_df):,} records")
+    st.dataframe(
+        display_df,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "Title": st.column_config.TextColumn("Title", width="large"),
+            "Year": st.column_config.TextColumn("Year", width="small"),
+            "Category": st.column_config.TextColumn("Category", width="small"),
+            "Status": st.column_config.TextColumn("Status", width="small"),
+            "Efficiency Focus": st.column_config.TextColumn("Entropy", width="small"),
+            "Category Score": st.column_config.NumberColumn("Score", format="%.4f"),
+            "Category Gap": st.column_config.NumberColumn("Gap", format="%.4f"),
+            "Max Efficiency Score": st.column_config.NumberColumn("Eff Score", format="%.4f"),
+            "Alt Category": st.column_config.TextColumn("Alt Cat", width="small"),
+            "Alt Score": st.column_config.NumberColumn("Alt Score", format="%.4f"),
+            "Reason": st.column_config.TextColumn("Reason", width="medium"),
+        },
+    )
+
+
+# ── Footer ─────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div style="text-align: center; padding: 2rem 0 1rem 0; color: #64748b; font-size: 0.8rem;">
+    <hr style="border-color: rgba(148, 163, 184, 0.15); margin-bottom: 1rem;">
+    Built with Streamlit &amp; Plotly &nbsp;·&nbsp; Data powered by SQLite &nbsp;·&nbsp; Model: all-MiniLM-L6-v2
+</div>
+""", unsafe_allow_html=True)
+

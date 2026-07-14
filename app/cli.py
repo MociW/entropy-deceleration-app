@@ -1,8 +1,10 @@
 import argparse
+import logging
 from pathlib import Path
 
 from app.core.config import settings
 from app.core.database import SessionLocal, init_db
+from app.core.logging import configure_logging
 from app.services.keyword_store import (
     load_thresholds,
     load_efficiency_keywords,
@@ -308,6 +310,7 @@ def cmd_seed_config(args):
 
 
 def main():
+    configure_logging()
     parser = argparse.ArgumentParser(description="Entropi Research Categorizer")
     sub = parser.add_subparsers(dest="command")
 

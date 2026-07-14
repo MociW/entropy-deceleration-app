@@ -1,3 +1,26 @@
 .venv/
 .idea/
 .env
+
+# Database — injected at runtime via volume mount, never versioned
+entropy.db
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Runtime output
+output/
+
+# macOS
+.DS_Store

@@ -1,4 +1,8 @@
+import logging
+
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import SessionLocal
 from app.models.models import (
@@ -37,8 +41,8 @@ def load_thresholds(session: Session | None = None) -> dict[str, float]:
                 defaults[r.key] = r.value
         if close_session:
             session.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to load thresholds from DB, using defaults: %s", e)
     return defaults
 
 
@@ -54,8 +58,8 @@ def load_field_keywords(session: Session | None = None) -> dict[str, str]:
             return result
         if close_session:
             session.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to load field keywords from DB, using constants fallback: %s", e)
     return dict(FIELDS)
 
 
@@ -77,8 +81,8 @@ def load_efficiency_keywords(lang: str | None = None, session: Session | None = 
             return result
         if close_session:
             session.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to load efficiency keywords from DB, using constants fallback: %s", e)
     if lang == "ID":
         return []
     return list(EFFICIENCY_KEYWORDS)
@@ -96,8 +100,8 @@ def load_cue_words(session: Session | None = None) -> list[str]:
             return result
         if close_session:
             session.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to load cue words from DB, using constants fallback: %s", e)
     return list(EFFICIENCY_CUE_WORDS)
 
 
@@ -168,8 +172,8 @@ def load_efficiency_keyword_map(lang: str | None = None, session: Session | None
             return result
         if close_session:
             session.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to load efficiency keyword map from DB: %s", e)
     return {}
 
 

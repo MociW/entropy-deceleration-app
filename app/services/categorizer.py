@@ -286,7 +286,6 @@ def save_outputs(df: pd.DataFrame, out_dir: Path, out_filename: str) -> None:
 def save_to_db(df: pd.DataFrame, contribution_category: str, session: Session) -> int:
     """Persist categorization results + metadata to database. Returns record count."""
     session.query(Research).filter_by(contribution_category=contribution_category).delete()
-    session.commit()
 
     has_abstract = "abstract" in df.columns
     has_author = "author" in df.columns

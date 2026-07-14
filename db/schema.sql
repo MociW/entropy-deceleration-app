@@ -12,7 +12,7 @@ CREATE TABLE institutions (
 );
 CREATE TABLE researches (
     id VARCHAR(36) NOT NULL,
-    data_id INT NOT NULL,
+    data_id INT NULL,
     title VARCHAR(255) NOT NULL,
     abstract TEXT NULL,
     year INT NOT NULL,

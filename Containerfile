@@ -24,6 +24,11 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Copy the rest of the application code
 COPY . .
 
+# Health check — gives the container 60s to load the model before probing.
+# Streamlit exposes a built-in health endpoint at /_stcore/health.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
 # Expose Streamlit default port
 EXPOSE 8501
 
