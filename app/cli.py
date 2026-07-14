@@ -13,6 +13,8 @@ from app.services.keyword_store import (
     add_efficiency_keyword,
     remove_efficiency_keyword,
     add_cue_word,
+    update_threshold,
+    KNOWN_THRESHOLD_KEYS,
 )
 from app.models.models import (
     CategorizationConfig,
@@ -119,19 +121,19 @@ def cmd_keyword_remove_efficiency(args):
     finally:
         session.close()
 
-
 def cmd_keyword_set_threshold(args):
-    session = SessionLocal()
+    """Update a single threshold value in the database (upsert)."""
     try:
-        existing = session.query(CategorizationConfig).filter_by(key=args.key).first()
-        if existing:
-            existing.value = args.value
-            session.commit()
-            print(f"Updated {args.key} = {args.value}")
-        else:
-            print(f"Key '{args.key}' not found.")
-    finally:
-        session.close()
+        row = update_threshold(key=args.key, value=args.value)
+        print(f"✓  {row.key} = {row.value}")
+        if row.description:
+            print(f"   {row.description}")
+    except ValueError as e:
+        print(f"Error: {e}")
+        raise SystemExit(1)
+    except Exception as e:
+        print(f"Database error: {e}")
+        raise SystemExit(1)
 
 
 def cmd_keyword_list(args):
@@ -359,9 +361,16 @@ def main():
     rm_eff.add_argument("--id", type=str, required=True, help="Keyword ID to remove")
     rm_eff.set_defaults(func=cmd_keyword_remove_efficiency)
 
-    set_th = kw_sub.add_parser("set-threshold", help="Update a categorization threshold")
-    set_th.add_argument("--key", type=str, required=True, help="Threshold key")
-    set_th.add_argument("--value", type=float, required=True, help="New value")
+    set_th = kw_sub.add_parser("set-threshold", help="Update a categorization threshold in the database")
+    set_th.add_argument(
+        "--key",
+        type=str,
+        required=True,
+        choices=sorted(KNOWN_THRESHOLD_KEYS),
+        metavar="KEY",
+        help=f"Threshold key to update. One of: {', '.join(sorted(KNOWN_THRESHOLD_KEYS))}",
+    )
+    set_th.add_argument("--value", type=float, required=True, help="New threshold value (float >= 0)")
     set_th.set_defaults(func=cmd_keyword_set_threshold)
 
     list_kw = kw_sub.add_parser("list", help="List all keywords and thresholds")

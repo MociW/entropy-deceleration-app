@@ -46,6 +46,68 @@ def load_thresholds(session: Session | None = None) -> dict[str, float]:
     return defaults
 
 
+KNOWN_THRESHOLD_KEYS = frozenset({
+    "confidence_threshold",
+    "gap_threshold",
+    "eff_threshold",
+})
+
+
+def update_threshold(key: str, value: float, session: Session | None = None) -> CategorizationConfig:
+    """Upsert a threshold value in the database.
+
+    - Updates the row if the key already exists.
+    - Inserts a new row if the key is not yet in the database (e.g. DB was never seeded).
+    - Raises ValueError for unknown keys to catch typos early.
+
+    Args:
+        key:     One of 'confidence_threshold', 'gap_threshold', 'eff_threshold'.
+        value:   The new threshold value (must be a positive float).
+        session: Optional existing SQLAlchemy session. A new one is opened if not provided.
+
+    Returns:
+        The updated or newly created CategorizationConfig row.
+    """
+    if key not in KNOWN_THRESHOLD_KEYS:
+        raise ValueError(
+            f"Unknown threshold key '{key}'. "
+            f"Valid keys: {', '.join(sorted(KNOWN_THRESHOLD_KEYS))}"
+        )
+    if value < 0:
+        raise ValueError(f"Threshold value must be >= 0, got {value}")
+
+    close_session = session is None
+    session = session or _get_session()
+    try:
+        row = session.query(CategorizationConfig).filter_by(key=key).first()
+        if row:
+            old_value = row.value
+            row.value = value
+            logger.info("Updated threshold '%s': %s -> %s", key, old_value, value)
+        else:
+            # DB was not seeded — insert the row so future loads are DB-driven
+            description_map = {
+                "confidence_threshold": "Minimum cosine similarity score for a category to be accepted",
+                "gap_threshold": "Minimum gap between top-1 and top-2 scores before marking as Ambiguous",
+                "eff_threshold": "Minimum efficiency score to flag a record as Entropy-related",
+            }
+            row = CategorizationConfig(
+                key=key,
+                value=value,
+                description=description_map.get(key, ""),
+            )
+            session.add(row)
+            logger.info("Inserted new threshold '%s' = %s", key, value)
+        session.commit()
+        session.refresh(row)
+        return row
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        if close_session:
+            session.close()
+
 def load_field_keywords(session: Session | None = None) -> dict[str, str]:
     try:
         close_session = session is None
