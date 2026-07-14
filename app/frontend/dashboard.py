@@ -390,7 +390,7 @@ st.session_state.setdefault("drill_year", None)
 
 for i, year in enumerate(years):
     with btn_cols[i]:
-        if st.button(f"{year}", key=f"btn_{year}", width="stretch"):
+        if st.button(f"{year}", key=f"btn_{year}", use_container_width=True):
             st.session_state["drill_year"] = year
 
 # Drill-down detail section
@@ -401,7 +401,7 @@ if st.session_state["drill_year"]:
     with c1:
         st.markdown(f"### 📊 Detail for {drill_year}")
     with c2:
-        if st.button("✕ Close", key="reset_drill", width="stretch"):
+        if st.button("✕ Close", key="reset_drill", use_container_width=True):
             st.session_state["drill_year"] = None
             st.rerun()
 
@@ -456,7 +456,7 @@ if st.session_state["drill_year"]:
     kw_btn_cols = st.columns(len(entropy_keywords))
     for j, cat in enumerate(entropy_keywords.keys()):
         with kw_btn_cols[j]:
-            if st.button(cat, key=f"kw_cat_{cat}_{drill_year}", width="stretch"):
+            if st.button(cat, key=f"kw_cat_{cat}_{drill_year}", use_container_width=True):
                 _show_keywords(cat)
 
     # Top efficiency Yes Researchs table
