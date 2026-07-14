@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 
 from app.core.database import engine, init_db
 from app.core.logging import configure_logging
+import datetime
 
 configure_logging()
 init_db()
@@ -257,16 +258,13 @@ def _show_keywords(category: str):
 st.markdown("""
 <div style="text-align: center; padding: 1rem 0 0.5rem 0;">
     <h1 style="
-        font-size: 2.5rem;
+        font-size: 3rem;
         font-weight: 800;
         background: Black;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0;
     ">Entropy Dashboard</h1>
-    <p style="color: #64748b; font-size: 1rem; margin-top: 0.25rem;">
-        Research Classification & Efficiency Analysis Dashboard
-    </p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -625,7 +623,18 @@ with dist_col2:
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("## Model Confidence Distribution")
 
-from app.core.config import settings as _settings
+from app.services.keyword_store import load_thresholds as _load_thresholds
+
+
+@st.cache_data(ttl=300)
+def load_active_thresholds() -> dict:
+    """Load categorization thresholds from DB, falling back to hardcoded constants."""
+    return _load_thresholds()
+
+_thresholds = load_active_thresholds()
+_conf_threshold = _thresholds["confidence_threshold"]
+_gap_threshold = _thresholds["gap_threshold"]
+_eff_threshold = _thresholds["eff_threshold"]
 
 conf_col1, conf_col2 = st.columns([3, 2])
 
@@ -638,11 +647,11 @@ with conf_col1:
         hovertemplate="Score: %{x:.2f}<br>Count: %{y}<extra></extra>",
     )])
     fig_hist.add_vline(
-        x=_settings.CONFIDENCE_THRESHOLD,
+        x=_conf_threshold,
         line_dash="dash",
         line_color=COLORS["danger"],
         line_width=2,
-        annotation_text=f"Threshold ({_settings.CONFIDENCE_THRESHOLD})",
+        annotation_text=f"Threshold ({_conf_threshold})",
         annotation_position="top right",
         annotation_font_color=COLORS["danger"],
     )
@@ -662,7 +671,7 @@ with conf_col1:
     st.plotly_chart(fig_hist, use_container_width=True, config=PLOTLY_CONFIG)
 
 with conf_col2:
-    low_conf = int((df_year["Category Score"] < _settings.CONFIDENCE_THRESHOLD).sum())
+    low_conf = int((df_year["Category Score"] < _conf_threshold).sum())
     ambiguous = int((df_year["Status"] == "Ambiguous").sum())
     uncategorized = int((df_year["Status"] == "Uncategorized").sum())
     clear = int((df_year["Status"] == "Clear").sum())
@@ -674,7 +683,7 @@ with conf_col2:
               delta_color="inverse")
     st.metric("Uncategorized", f"{uncategorized:,}", f"{uncategorized/conf_total*100:.1f}%" if conf_total else "0%",
               delta_color="inverse")
-    st.caption(f"Confidence threshold: **{_settings.CONFIDENCE_THRESHOLD}** · Gap threshold: **{_settings.GAP_THRESHOLD}**")
+    st.caption(f"Confidence threshold: **{_conf_threshold}** · Gap threshold: **{_gap_threshold}**")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -765,12 +774,12 @@ with st.expander("📋 View Full Dataset", expanded=False):
         },
     )
 
+currect_year = datetime.datetime.now().year
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
-st.markdown("""
+st.markdown(f"""
 <div style="text-align: center; padding: 2rem 0 1rem 0; color: #64748b; font-size: 0.8rem;">
     <hr style="border-color: rgba(148, 163, 184, 0.15); margin-bottom: 1rem;">
-    Built with Streamlit &amp; Plotly &nbsp;·&nbsp; Data powered by SQLite &nbsp;·&nbsp; Model: all-MiniLM-L6-v2
+    {currect_year} © Pusat Kajian Pelambatan Entropi
 </div>
 """, unsafe_allow_html=True)
-

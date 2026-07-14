@@ -38,9 +38,9 @@ class Settings:
     DATA_DIR: str = os.getenv("DATA_DIR", "data")
 
     CATEGORIZER_MODEL: str = os.getenv("CATEGORIZER_MODEL", "all-MiniLM-L6-v2")
-    CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.20"))
-    GAP_THRESHOLD: float = float(os.getenv("GAP_THRESHOLD", "0.03"))
-    EFF_THRESHOLD: float = float(os.getenv("EFF_THRESHOLD", "0.38"))
+    # Categorization thresholds are stored in the database (categorization_config table).
+    # Hardcoded fallback defaults live in app/services/constants.py.
+    # Do not add threshold env-vars here — use `entropi keyword set-threshold` to update them.
 
 
 settings = Settings()
