@@ -3,8 +3,8 @@
 .env
 
 # Database — injected at runtime via volume mount, never versioned
-entropy.db
-*.db
+#entropy.db
+#*.db
 
 # Python
 __pycache__/
