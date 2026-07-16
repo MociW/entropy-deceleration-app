@@ -689,92 +689,92 @@ with conf_col2:
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 6: Author Analytics
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("## Author Analytics")
-
-
-@st.cache_data(ttl=300)
-def load_author_stats(dataset_type: str) -> pd.DataFrame:
-    """Top authors by total research output and entropy contribution."""
-    query = """
-        SELECT
-            a.name        AS "Author",
-            a.nidn        AS "NIDN",
-            COUNT(r.id)   AS "Total",
-            SUM(CASE WHEN v.is_efficiency = 'Yes' THEN 1 ELSE 0 END) AS "Entropy"
-        FROM authors a
-        JOIN research_authors ra ON a.id = ra.author_id
-        JOIN researches r        ON ra.research_id = r.id
-        LEFT JOIN research_validation_flags v ON r.id = v.research_id
-        WHERE r.contribution_category = :dataset_type
-        GROUP BY a.id
-        ORDER BY "Total" DESC
-    """
-    df_auth = pd.read_sql(query, engine, params={"dataset_type": dataset_type})
-    df_auth["% Entropy"] = (df_auth["Entropy"] / df_auth["Total"] * 100).round(1)
-    return df_auth
-
-
-author_df = load_author_stats(dataset_map[file_choice])
-
-if author_df.empty:
-    st.info("No author data available for this dataset.")
-else:
-    auth_search = st.text_input("🔍 Search authors...", placeholder="Type a name or NIDN", key="author_search")
-    display_authors = author_df.copy()
-    if auth_search:
-        mask = (
-            display_authors["Author"].str.contains(auth_search, case=False, na=False)
-            | display_authors["NIDN"].astype(str).str.contains(auth_search, case=False, na=False)
-        )
-        display_authors = display_authors[mask]
-
-    st.dataframe(
-        display_authors,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            "Author": st.column_config.TextColumn("Author", width="large"),
-            "NIDN": st.column_config.TextColumn("NIDN", width="medium"),
-            "Total": st.column_config.NumberColumn("Total", format="%d"),
-            "Entropy": st.column_config.NumberColumn("Entropy", format="%d"),
-            "% Entropy": st.column_config.NumberColumn("% Entropy", format="%.1f%%"),
-        },
-    )
-    st.caption(f"{len(display_authors):,} authors shown")
+# st.markdown("## Author Analytics")
+#
+#
+# @st.cache_data(ttl=300)
+# def load_author_stats(dataset_type: str) -> pd.DataFrame:
+#     """Top authors by total research output and entropy contribution."""
+#     query = """
+#         SELECT
+#             a.name        AS "Author",
+#             a.nidn        AS "NIDN",
+#             COUNT(r.id)   AS "Total",
+#             SUM(CASE WHEN v.is_efficiency = 'Yes' THEN 1 ELSE 0 END) AS "Entropy"
+#         FROM authors a
+#         JOIN research_authors ra ON a.id = ra.author_id
+#         JOIN researches r        ON ra.research_id = r.id
+#         LEFT JOIN research_validation_flags v ON r.id = v.research_id
+#         WHERE r.contribution_category = :dataset_type
+#         GROUP BY a.id
+#         ORDER BY "Total" DESC
+#     """
+#     df_auth = pd.read_sql(query, engine, params={"dataset_type": dataset_type})
+#     df_auth["% Entropy"] = (df_auth["Entropy"] / df_auth["Total"] * 100).round(1)
+#     return df_auth
+#
+#
+# author_df = load_author_stats(dataset_map[file_choice])
+#
+# if author_df.empty:
+#     st.info("No author data available for this dataset.")
+# else:
+#     auth_search = st.text_input("🔍 Search authors...", placeholder="Type a name or NIDN", key="author_search")
+#     display_authors = author_df.copy()
+#     if auth_search:
+#         mask = (
+#             display_authors["Author"].str.contains(auth_search, case=False, na=False)
+#             | display_authors["NIDN"].astype(str).str.contains(auth_search, case=False, na=False)
+#         )
+#         display_authors = display_authors[mask]
+#
+#     st.dataframe(
+#         display_authors,
+#         width="stretch",
+#         hide_index=True,
+#         column_config={
+#             "Author": st.column_config.TextColumn("Author", width="large"),
+#             "NIDN": st.column_config.TextColumn("NIDN", width="medium"),
+#             "Total": st.column_config.NumberColumn("Total", format="%d"),
+#             "Entropy": st.column_config.NumberColumn("Entropy", format="%d"),
+#             "% Entropy": st.column_config.NumberColumn("% Entropy", format="%.1f%%"),
+#         },
+#     )
+#     st.caption(f"{len(display_authors):,} authors shown")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 7: Raw Data Explorer
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("## Raw Data Explorer")
-
-with st.expander("📋 View Full Dataset", expanded=False):
-    search_term = st.text_input("🔍 Search titles...", placeholder="Type to filter by title", key="raw_search")
-    display_df = df_year.copy()
-    if search_term:
-        display_df = display_df[display_df["Title"].str.contains(search_term, case=False, na=False)]
-
-    st.caption(f"{len(display_df):,} records")
-    st.dataframe(
-        display_df,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            "Title": st.column_config.TextColumn("Title", width="large"),
-            "Year": st.column_config.TextColumn("Year", width="small"),
-            "Category": st.column_config.TextColumn("Category", width="small"),
-            "Status": st.column_config.TextColumn("Status", width="small"),
-            "Efficiency Focus": st.column_config.TextColumn("Entropy", width="small"),
-            "Category Score": st.column_config.NumberColumn("Score", format="%.4f"),
-            "Category Gap": st.column_config.NumberColumn("Gap", format="%.4f"),
-            "Max Efficiency Score": st.column_config.NumberColumn("Eff Score", format="%.4f"),
-            "Alt Category": st.column_config.TextColumn("Alt Cat", width="small"),
-            "Alt Score": st.column_config.NumberColumn("Alt Score", format="%.4f"),
-            "Reason": st.column_config.TextColumn("Reason", width="medium"),
-        },
-    )
-
-currect_year = datetime.datetime.now().year
+# st.markdown("## Raw Data Explorer")
+#
+# with st.expander("📋 View Full Dataset", expanded=False):
+#     search_term = st.text_input("🔍 Search titles...", placeholder="Type to filter by title", key="raw_search")
+#     display_df = df_year.copy()
+#     if search_term:
+#         display_df = display_df[display_df["Title"].str.contains(search_term, case=False, na=False)]
+#
+#     st.caption(f"{len(display_df):,} records")
+#     st.dataframe(
+#         display_df,
+#         width="stretch",
+#         hide_index=True,
+#         column_config={
+#             "Title": st.column_config.TextColumn("Title", width="large"),
+#             "Year": st.column_config.TextColumn("Year", width="small"),
+#             "Category": st.column_config.TextColumn("Category", width="small"),
+#             "Status": st.column_config.TextColumn("Status", width="small"),
+#             "Efficiency Focus": st.column_config.TextColumn("Entropy", width="small"),
+#             "Category Score": st.column_config.NumberColumn("Score", format="%.4f"),
+#             "Category Gap": st.column_config.NumberColumn("Gap", format="%.4f"),
+#             "Max Efficiency Score": st.column_config.NumberColumn("Eff Score", format="%.4f"),
+#             "Alt Category": st.column_config.TextColumn("Alt Cat", width="small"),
+#             "Alt Score": st.column_config.NumberColumn("Alt Score", format="%.4f"),
+#             "Reason": st.column_config.TextColumn("Reason", width="medium"),
+#         },
+#     )
+#
+# currect_year = datetime.datetime.now().year
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
