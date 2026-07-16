@@ -774,7 +774,8 @@ with conf_col2:
 #         },
 #     )
 #
-# currect_year = datetime.datetime.now().year
+
+currect_year = datetime.datetime.now().year
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
