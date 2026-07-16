@@ -57,8 +57,8 @@ class Research(Base):
 
     start_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     finish_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     __table_args__ = (
         Index("idx_researches_year", "year"),
@@ -116,8 +116,8 @@ class ResearchValidationFlag(Base):
     efficiency_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     model_version: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     __table_args__ = (
         Index("idx_validation_entropy", "is_entropy"),

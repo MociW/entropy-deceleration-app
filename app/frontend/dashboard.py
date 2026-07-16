@@ -380,7 +380,7 @@ for i, year in enumerate(years):
     )
     fig.update_layout(**_GRID_AXES)
     with cols[i]:
-        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
+        st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
 # ── Year drill-down buttons ───────────────────────────────────────────────────
 btn_cols = st.columns(len(years))
@@ -388,7 +388,7 @@ st.session_state.setdefault("drill_year", None)
 
 for i, year in enumerate(years):
     with btn_cols[i]:
-        if st.button(f"{year}", key=f"btn_{year}", use_container_width=True):
+        if st.button(f"{year}", key=f"btn_{year}", width="stretch"):
             st.session_state["drill_year"] = year
 
 # Drill-down detail section
@@ -399,7 +399,7 @@ if st.session_state["drill_year"]:
     with c1:
         st.markdown(f"### 📊 Detail for {drill_year}")
     with c2:
-        if st.button("✕ Close", key="reset_drill", use_container_width=True):
+        if st.button("✕ Close", key="reset_drill", width="stretch"):
             st.session_state["drill_year"] = None
             st.rerun()
 
@@ -447,14 +447,14 @@ if st.session_state["drill_year"]:
         xaxis={**_GRID_AXES["xaxis"], "categoryorder": "array", "categoryarray": DESIRED_ORDER},
         yaxis=_GRID_AXES["yaxis"],
     )
-    st.plotly_chart(fig_drill, use_container_width=True, config=PLOTLY_CONFIG)
+    st.plotly_chart(fig_drill, width="stretch", config=PLOTLY_CONFIG)
 
     # Entropy keyword reference — modal per category
     st.caption("**Entropy Keywords by Category**")
     kw_btn_cols = st.columns(len(entropy_keywords))
     for j, cat in enumerate(entropy_keywords.keys()):
         with kw_btn_cols[j]:
-            if st.button(cat, key=f"kw_cat_{cat}_{drill_year}", use_container_width=True):
+            if st.button(cat, key=f"kw_cat_{cat}_{drill_year}", width="stretch"):
                 _show_keywords(cat)
 
     # Top efficiency Yes Researchs table
@@ -464,7 +464,7 @@ if st.session_state["drill_year"]:
     )
     st.dataframe(
         yes_drill[["Title", "Category", "Max Efficiency Score", "Reason"]].head(15),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "Title": st.column_config.TextColumn("Title", width="large"),
@@ -530,7 +530,7 @@ fig_trend.update_layout(
     ),
     legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
 )
-st.plotly_chart(fig_trend, use_container_width=True, config=PLOTLY_CONFIG)
+st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CONFIG)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -574,7 +574,7 @@ with dist_col1:
             )
         ],
     )
-    st.plotly_chart(fig_donut, use_container_width=True, config=PLOTLY_CONFIG)
+    st.plotly_chart(fig_donut, width="stretch", config=PLOTLY_CONFIG)
 
 with dist_col2:
     # Status breakdown per category
@@ -613,7 +613,7 @@ with dist_col2:
         margin=dict(l=40, r=40, t=60, b=40),
         legend=dict(**_LEGEND_DEFAULT, orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
     )
-    st.plotly_chart(fig_status, use_container_width=True, config=PLOTLY_CONFIG)
+    st.plotly_chart(fig_status, width="stretch", config=PLOTLY_CONFIG)
 
 
 
@@ -668,7 +668,7 @@ with conf_col1:
         margin=dict(l=40, r=40, t=60, b=40),
         bargap=0.05,
     )
-    st.plotly_chart(fig_hist, use_container_width=True, config=PLOTLY_CONFIG)
+    st.plotly_chart(fig_hist, width="stretch", config=PLOTLY_CONFIG)
 
 with conf_col2:
     low_conf = int((df_year["Category Score"] < _conf_threshold).sum())
@@ -730,7 +730,7 @@ else:
 
     st.dataframe(
         display_authors,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "Author": st.column_config.TextColumn("Author", width="large"),
@@ -757,7 +757,7 @@ with st.expander("📋 View Full Dataset", expanded=False):
     st.caption(f"{len(display_df):,} records")
     st.dataframe(
         display_df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "Title": st.column_config.TextColumn("Title", width="large"),
