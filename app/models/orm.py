@@ -14,7 +14,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Table,
-    func,
 )
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 
@@ -69,6 +68,7 @@ class Research(Base):
     authors: Mapped[List["Author"]] = relationship(secondary=research_authors, back_populates="researches")
     validation_flag: Mapped[Optional["ResearchValidationFlag"]] = relationship(back_populates="research", uselist=False)
 
+
 class Institution(Base):
     __tablename__ = "institutions"
 
@@ -76,6 +76,7 @@ class Institution(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     researches: Mapped[List["Research"]] = relationship(secondary=research_institutions, back_populates="institutions")
+
 
 class Field(Base):
     __tablename__ = "fields"

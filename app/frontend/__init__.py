@@ -1,1 +1,0 @@
-# Entropi Frontend Package

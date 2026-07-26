@@ -1,10 +1,13 @@
-DASHBOARD_APP ?= app/frontend/dashboard.py
+DASHBOARD_APP ?= app/ui/dashboard/main.py
+OUT ?= output
+OUT_FILENAME ?= community_service_result
+DATASET_TYPE ?= community_service
 
 run:
-	streamlit run ${DASHBOARD_APP}
+	PYTHONPATH=$(shell pwd) streamlit run ${DASHBOARD_APP}
 
-categorize:
-	python -m app.cli categorize --file ${FILE} --out ${OUT:-output} --out_filename ${OUT_FILENAME:-Hasil_Analisis_Proyek_Penelitian_V5_0} --dataset_type ${DATASET_TYPE:-research}
+api-run:
+	PYTHONPATH=$(shell pwd) uvicorn app.api.main:app --reload
 
 init-db:
 	python -m app.cli init-db
@@ -20,12 +23,6 @@ keyword-list:
 
 keyword-add-cue:
 	python -m app.cli keyword add-cue "${WORD}"
-
-keyword-add-group:
-	python -m app.cli keyword add-group --order ${ORDER} --label "${LABEL}"
-
-keyword-add-efficiency:
-	python -m app.cli keyword add-efficiency --order ${ORDER} --keyword "${KEYWORD}"
 
 keyword-remove-efficiency:
 	python -m app.cli keyword remove-efficiency --id ${ID}
@@ -43,5 +40,5 @@ podman-stop:
 	podman stop entropy-dashboard || true
 	podman rm entropy-dashboard || true
 
-.PHONY: run categorize init-db sanitize-db seed-config keyword-list keyword-add-cue keyword-add-group keyword-add-efficiency keyword-remove-efficiency keyword-set-threshold podman-build podman-run podman-stop
+.PHONY: run api-run init-db sanitize-db seed-config keyword-list keyword-add-cue keyword-remove-efficiency keyword-set-threshold podman-build podman-run podman-stop
 

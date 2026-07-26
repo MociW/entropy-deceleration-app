@@ -21,6 +21,9 @@ dependencies = [
     "numpy>=2.0",
     "sentence-transformers>=3.0",
     "scikit-learn>=1.5",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
@@ -33,7 +36,7 @@ dev = [
 entropi = "app.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*"]  # covers app.core, app.models, app.services, app.services.pipeline, app.ui
 
 [tool.ruff]
 target-version = "py311"

@@ -1,18 +1,19 @@
 import logging
+from typing import cast, Any
 
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
 from app.core.database import SessionLocal
-from app.models.models import (
+from app.models import (
     CategorizationConfig,
     EfficiencyKeywordGroup,
     EfficiencyKeyword,
     EfficiencyCueWord,
     Field as FieldModel,
 )
-from app.services.constants import (
+from app.util.constants import (
     FIELDS,
     EFFICIENCY_KEYWORDS,
     EFFICIENCY_CUE_WORDS,
@@ -38,7 +39,7 @@ def load_thresholds(session: Session | None = None) -> dict[str, float]:
         rows = session.query(CategorizationConfig).all()
         if rows:
             for r in rows:
-                defaults[r.key] = r.value
+                defaults[cast(str, cast(object, r.key))] = cast(float, cast(object, r.value))
         if close_session:
             session.close()
     except Exception as e:
@@ -53,7 +54,8 @@ KNOWN_THRESHOLD_KEYS = frozenset({
 })
 
 
-def update_threshold(key: str, value: float, session: Session | None = None) -> CategorizationConfig:
+def update_threshold(key: str, value: float, session: Session | None = None) -> type[
+                                                                                    CategorizationConfig] | CategorizationConfig:
     """Upsert a threshold value in the database.
 
     - Updates the row if the key already exists.
@@ -108,13 +110,15 @@ def update_threshold(key: str, value: float, session: Session | None = None) -> 
         if close_session:
             session.close()
 
-def load_field_keywords(session: Session | None = None) -> dict[str, str]:
+
+def load_field_keywords(session: Session | None = None) -> dict[str, str] | dict[Any, Any] | dict[str, Any] | dict[
+    bytes, bytes]:
     try:
         close_session = session is None
         session = session or _get_session()
         rows = session.query(FieldModel).all()
         if rows:
-            result = {r.name: r.keywords for r in rows}
+            result = {cast(str, cast(object, r.name)): cast(str, cast(object, r.keywords)) for r in rows}
             if close_session:
                 session.close()
             return result
@@ -134,9 +138,9 @@ def load_efficiency_keywords(lang: str | None = None, session: Session | None = 
             result = []
             for group in groups:
                 if lang:
-                    keywords = [k.keyword for k in group.keywords if k.language == lang]
+                    keywords = [cast(str, k.keyword) for k in group.keywords if k.language == lang]
                 else:
-                    keywords = [k.keyword for k in group.keywords]
+                    keywords = [cast(str, k.keyword) for k in group.keywords]
                 result.append(" ".join(keywords) if keywords else "")
             if close_session:
                 session.close()
@@ -156,7 +160,7 @@ def load_cue_words(session: Session | None = None) -> list[str]:
         session = session or _get_session()
         rows = session.query(EfficiencyCueWord).all()
         if rows:
-            result = [r.word for r in rows]
+            result = [cast(str, cast(object, r.word)) for r in rows]
             if close_session:
                 session.close()
             return result
@@ -169,10 +173,11 @@ def load_cue_words(session: Session | None = None) -> list[str]:
 
 def add_efficiency_keyword_group(
     group_order: int, label: str, session: Session | None = None
-) -> EfficiencyKeywordGroup:
+) -> EfficiencyKeywordGroup :
     close_session = session is None
     session = session or _get_session()
     existing = session.query(EfficiencyKeywordGroup).filter_by(group_order=group_order).first()
+    group: EfficiencyKeywordGroup
     if existing:
         existing.label = label
         group = existing
@@ -193,9 +198,9 @@ def add_efficiency_keyword(group_order: int, keyword: str, session: Session | No
     if not group:
         raise ValueError(f"Efficiency keyword group with order {group_order} not found.")
 
-    existing = session.query(EfficiencyKeyword).filter_by(group_id=group.id, keyword=keyword).first()
+    existing = session.query(EfficiencyKeyword).filter_by(group_id=cast(str, cast(object, group.id)), keyword=keyword).first()
     if not existing:
-        session.add(EfficiencyKeyword(group_id=group.id, keyword=keyword))
+        session.add(EfficiencyKeyword(group_id=cast(str, cast(object, group.id)), keyword=keyword))
         session.commit()
 
     if close_session:
@@ -224,11 +229,15 @@ def load_efficiency_keyword_map(lang: str | None = None, session: Session | None
         session = session or _get_session()
         groups = session.query(EfficiencyKeywordGroup).order_by(EfficiencyKeywordGroup.group_order).all()
         if groups:
-            result = {}
+            result: dict[str, list[str]] = {}
             for group in groups:
-                keywords = [k.keyword for k in group.keywords if lang is None or k.language == lang]
+                keywords = [
+                    cast(str, k.keyword)
+                    for k in group.keywords
+                    if lang is None or cast(str, k.language) == lang
+                ]
                 if keywords:
-                    result[group.label] = keywords
+                    result[cast(str, cast(object, group.label))] = keywords
             if close_session:
                 session.close()
             return result

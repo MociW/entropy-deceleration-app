@@ -19,5 +19,5 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
     """Create all tables defined in the ORM metadata."""
-    from app.models.models import Base
+    from app.models.orm import Base
     Base.metadata.create_all(bind=engine)

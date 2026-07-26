@@ -13,7 +13,9 @@ class Settings:
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
     DB_HOST: str = os.getenv("DB_HOST", "")
     DB_PORT: str = os.getenv("DB_PORT", "")
-    DB_NAME: str = os.getenv("DB_NAME", "entropy.db")
+    # SQLite file lives inside db/ so all database artifacts are co-located.
+    DB_NAME: str = os.getenv("DB_NAME", "db/entropy.db")
+
 
     @property
     def database_url(self) -> str:
@@ -38,6 +40,10 @@ class Settings:
     DATA_DIR: str = os.getenv("DATA_DIR", "data")
 
     CATEGORIZER_MODEL: str = os.getenv("CATEGORIZER_MODEL", "all-MiniLM-L6-v2")
+    
+    # API Authentication
+    API_KEY: str = os.getenv("API_KEY", "bbf97abcc7e152e0627fbb8b3b9634ef73ff77e35be1ca1df91b31b6316bc031")
+    
     # Categorization thresholds are stored in the database (categorization_config table).
     # Hardcoded fallback defaults live in app/services/constants.py.
     # Do not add threshold env-vars here — use `entropi keyword set-threshold` to update them.

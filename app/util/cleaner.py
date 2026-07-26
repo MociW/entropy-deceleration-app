@@ -21,7 +21,7 @@ def clean_title(title: str) -> str:
         title = re.sub(pat, "", title, flags=re.IGNORECASE).strip()
 
     title = re.sub(
-        r"\s*[-â€\"\"S]+\s*(?:DEPARTEMEN|DEPARTEMENT|BAGIAN)\s+[A-Z\s]+"
+        r"\s*[-â€\"S]+\s*(?:DEPARTEMEN|DEPARTEMENT|BAGIAN)\s+[A-Z\s]+"
         r"(?:FAKULTAS\s+TEKNIK\s+UNIVERSITAS\s+GADJAH\s+MADA\s+TAHUN\s+\d{4})?\s*$",
         "",
         title,
@@ -66,13 +66,13 @@ def sanitize_casing(text: str) -> str:
             # For long text/abstracts, convert to sentence case
             import re
             lowered = trimmed.lower()
-            sentences = re.split(r'(\s*[\.\!\?]+\s*)', lowered)
+            sentences = re.split(r'(\s*[.!?]+\s*)', lowered)
             capitalized_parts = []
             capitalize_next = True
             for part in sentences:
                 if not part:
                     continue
-                if re.match(r'^\s*[\.\!\?]+\s*$', part):
+                if re.match(r'^\s*[.!?]+\s*$', part):
                     capitalized_parts.append(part)
                     capitalize_next = True
                 else:

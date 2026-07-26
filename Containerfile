@@ -33,4 +33,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 8501
 
 # Run the app
-CMD ["streamlit", "run", "app/frontend/dashboard.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
+ENV PYTHONPATH=/app
+CMD ["streamlit", "run", "app/ui/dashboard/main.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]

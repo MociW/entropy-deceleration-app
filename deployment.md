@@ -21,13 +21,12 @@ Before starting, ensure your target server has the following installed:
    cd ~/entropy
    ```
 
-2. If your SQLite database file (`entropy.db`) is not already seeded and ready, initialize it:
+2. Initialize the SQLite database structure (this creates `entropy.db` with the correct tables):
    ```bash
-   # Make sure dependencies are installed or databases are generated
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -e .
-   make init-db seed-config categorize
+   make init-db
    ```
 
 ---
@@ -46,18 +45,39 @@ make podman-build
 podman build -t entropy-app -f Containerfile .
 ```
 
-### Step B: Run the Container
-Run the container using the `:U` flag. This flag is critical for **rootless Podman** setups as it maps container user permissions correctly to host file ownership:
+### Step B: Environment Variables Security
+Create an `.env` file on your server to securely store your API Key. **Do not put this file in the Git repository.**
 ```bash
-make podman-run
+nano /secure/path/on/host/.env
 ```
-*Alternative (manual command):*
+Add your API key:
+```ini
+API_KEY="my-super-secret-key-123"
+```
+
+### Step C: Run the Containers (API & Dashboard)
+You need to run both the FastAPI backend (for triggering the pipeline via API) and the Streamlit frontend. 
+
+Run the Dashboard container (passing the `.env` file for security):
 ```bash
 podman run -d \
   -p 8501:8501 \
   --name entropy-dashboard \
+  --env-file /secure/path/on/host/.env \
   -v $(pwd)/entropy.db:/app/entropy.db:U \
-  entropy-app
+  entropy-app \
+  streamlit run app/ui/dashboard/main.py --server.port=8501 --server.address=0.0.0.0
+```
+
+Run the API container (using the same image and `.env` file, but a different command):
+```bash
+podman run -d \
+  -p 8000:8000 \
+  --name entropy-api \
+  --env-file /secure/path/on/host/.env \
+  -v $(pwd)/entropy.db:/app/entropy.db:U \
+  entropy-app \
+  uvicorn app.api.main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Step C: Verify the Container Status
@@ -145,23 +165,47 @@ loginctl show-user $USER | grep Linger
 ```
 
 ### Step B: Run as a systemd Service (Auto-start on Boot using Quadlets)
-To ensure the container automatically boots up if the server restarts, we use Podman's modern **Quadlet** manager:
+To ensure the containers automatically boot up if the server restarts, we use Podman's modern **Quadlet** manager.
 
 1. Create the systemd config directory for containers:
    ```bash
    mkdir -p ~/.config/containers/systemd/
    ```
-2. Create a new Quadlet file:
+
+2. Create the Dashboard Quadlet file:
    ```bash
    nano ~/.config/containers/systemd/entropy-dashboard.container
    ```
-3. Paste the following configuration:
+   Paste the following:
    ```ini
    [Container]
    Image=localhost/entropy-app
    ContainerName=entropy-dashboard
    PublishPort=8501:8501
    Volume=%h/entropy-deceleration-app/entropy.db:/app/entropy.db:U
+   EnvironmentFile=/secure/path/on/host/.env
+   Exec=streamlit run app/ui/dashboard/main.py --server.port=8501 --server.address=0.0.0.0
+
+   [Service]
+   Restart=always
+
+   [Install]
+   WantedBy=default.target
+   ```
+
+3. Create the API Quadlet file:
+   ```bash
+   nano ~/.config/containers/systemd/entropy-api.container
+   ```
+   Paste the following:
+   ```ini
+   [Container]
+   Image=localhost/entropy-app
+   ContainerName=entropy-api
+   PublishPort=8000:8000
+   Volume=%h/entropy-deceleration-app/entropy.db:/app/entropy.db:U
+   EnvironmentFile=/secure/path/on/host/.env
+   Exec=uvicorn app.api.main:app --host 0.0.0.0 --port 8000
 
    [Service]
    Restart=always
@@ -171,10 +215,11 @@ To ensure the container automatically boots up if the server restarts, we use Po
    ```
    *(Note: `%h` is a systemd variable representing your home directory, e.g., `/home/ubuntu`).*
 
-4. Reload systemd and start the new service:
+4. Reload systemd and start the new services:
    ```bash
    systemctl --user daemon-reload
    systemctl --user start entropy-dashboard.service
+   systemctl --user start entropy-api.service
    ```
 
 ---
@@ -207,3 +252,16 @@ journalctl --user -xeu entropy-dashboard.service -f
 If you receive a `Database is locked` or `Access Denied` error while writing/reading data in the container:
 1. Ensure the SQLite file (`entropy.db`) on your host has read/write permissions for your user.
 2. Confirm you ran the container with the `:U` flag (`Volume=%h/entropy/entropy.db:/app/entropy.db:U`).
+
+### Triggering the Pipeline remotely
+Now that the backend CLI is deprecated in favor of the API, you upload your data directly to the server remotely using `curl`:
+```bash
+curl -X POST "http://your_server_ip_or_domain:8000/api/v1/pipeline/import" \
+     -H "X-API-Key: my-super-secret-key-123" \
+     -F "file=@local_data.xlsx" \
+     -F "dataset_type=research"
+
+curl -X POST "http://your_server_ip_or_domain:8000/api/v1/pipeline/categorize" \
+     -H "X-API-Key: my-super-secret-key-123" \
+     -F "dataset_type=research"
+```
